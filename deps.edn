@@ -1,0 +1,39 @@
+{:paths ["zrc" "src"]
+ :deps  {org.clojure/clojure       {:mvn/version "1.10.3"}
+         cheshire/cheshire         {:mvn/version "5.10.0"}
+         clj-commons/clj-yaml      {:mvn/version "0.7.106"}
+         com.cognitect/transit-clj {:mvn/version "1.0.324"}
+         http-kit/http-kit         {:mvn/version "2.5.3"}
+         ring/ring                 {:mvn/version "1.9.3"}
+         ring/ring-defaults        {:mvn/version "0.3.3"}
+         hiccup/hiccup             {:mvn/version "2.0.0-alpha2"}
+         zen-lang/zen              {:git/url "https://github.com/zen-lang/zen"
+                                    :sha "a376f197902330473cf688eb3ff02f69094677de"}
+
+         dsql/dsql                 {:git/url "https://github.com/HealthSamurai/dsql"
+                                    :sha "1086f64180d7f601ffff0335139594ccef2d2a7b"}
+
+         borkdude/edamame          {:mvn/version "0.0.11-alpha.16"}
+         clj-time/clj-time         {:mvn/version "0.15.2"}
+
+         org.clojure/java.jdbc     {:mvn/version "0.7.12"}
+         org.postgresql/postgresql {:mvn/version "42.2.22.jre7"}
+         com.zaxxer/HikariCP       {:mvn/version "4.0.3"}}
+ :aliases
+ {:nrepl
+  {:extra-paths ["dev" "resources" "testzrc"]
+   :extra-deps  {refactor-nrepl/refactor-nrepl {:mvn/version "2.5.1"}
+                 cider/cider-nrepl             {:mvn/version "LATEST"}
+                 cider/piggieback              {:mvn/version "0.5.2"}
+                 zprint/zprint                 {:mvn/version "1.1.2"}
+                 re-frisk/re-frisk             {:mvn/version "1.5.1"}
+                 binaryage/devtools            {:mvn/version "1.0.3"}}
+
+   :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]}
+
+  :test {:extra-paths ["test" "test-ui" "resources"]}
+
+  :kaocha
+  {:extra-deps {lambdaisland/kaocha {:mvn/version "1.0.861"}}
+   :jvm-opts   ^:replace ["-XX:-OmitStackTraceInFastThrow"]
+   :main-opts  ["-m" "kaocha.runner" "--config-file" "test/test.edn"]}}}

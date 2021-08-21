@@ -1,0 +1,107 @@
+{ns zenbox
+
+ rpc {:zen/tags #{zen/tag}}
+
+ service
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map
+  :schema-key {:key :service}
+  :keys {:service {:type zen/symbol}}}
+
+ api
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/any}
+
+ server
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map
+  :require #{:port}
+  :keys {:apis {:type zen/set :every {:confirms #{api}}}
+         :port {:type zen/integer}
+         :after-start {:type zen/vector :every {:type zen/symbol :tags #{rpc}}}
+         :services {:type zen/set :every {:type zen/symbol :tags #{service}}}
+         ;; :ip                 ; Which ip (if has many ips) to bind
+         ;; :thread             ; Http worker thread count
+         ;; :queue-size         ; Max job queued before reject to project self
+         ;; :max-body           ; Max http body: 8m
+         ;; :max-ws             ; Max websocket message size
+         ;; :max-line           ; Max http inital line length
+         ;; :proxy-protocol     ; Proxy protocol e/o #{:disable :enable :optional}
+         ;; :worker-name-prefix ; Worker thread name prefix
+         ;; :worker-pool        ; ExecutorService to use for request-handling (:thread,
+         ;; :worker-name-prefix, :queue-size are ignored if set)
+         ;; :error-logger       ; Arity-2 fn (args: string text, exception) to log errors
+         ;; :warn-logger        ; Arity-2 fn (args: string text, exception) to log warnings
+         ;; :event-logger       ; Arity-1 fn (arg: string event name)
+         ;; :event-names        ; map of HTTP-Kit event names to respective loggable event names"
+         }}
+
+ sql {:zen/tags #{rpc}
+      :zen/desc "Run sql"}
+
+ op {:zen/tags #{zen/tag}
+     :zen/desc "REST Operation"}
+
+ insert
+ {:zen/tags #{rpc}
+  :params {}}
+
+ delete
+ {:zen/tags #{rpc}
+  :params {}}
+
+ read
+ {:zen/tags #{rpc}}
+
+ search
+ {:zen/tags #{rpc}}
+
+ query
+ {:zen/tags #{rpc}}
+
+ validate
+ {:zen/tags #{rpc}}
+
+ json-rpc
+ {:zen/tags #{op} :zen/desc "JSON RPC endpoint"}
+
+ response
+ {:zen/tags #{op} :zen/desc "Simple rest response"}
+
+ ensure-stores
+ {:zen/tags #{rpc}}
+
+ store {:zen/tags #{zen/tag zen/schema}
+        :type zen/map
+        :keys {:engine {:type zen/symbol :tags #{store-engine}}
+               :schemas {:type zen/set :every {:type zen/symbol :tags #{zen/schema}}}}}
+
+ store-engine {:zen/tags #{zen/tag}}
+ jsonb-store {:zen/tags #{store-engine zen/schema zen/tag}
+              :type zen/map
+              :keys {:table-name {:type zen/string}
+                     :indices {:type zen/any}
+                     :db {:type zen/symbol}}}
+ atom-store {:zen/tags #{store-engine zen/schema zen/tag}
+             :type zen/map
+             :keys {:path {:type zen/vector :every {:type zen/keyword}}}
+             }
+
+ pg {:zen/tags #{zen/tag zen/schema service}
+     :type zen/map
+     :require #{:port :host :user :password :database}
+     :keys {:port {:type zen/integer}
+            :host {:type zen/string}
+            :user {:type zen/string}
+            :password {:type zen/string}
+            :database {:type zen/string}
+
+            ;; :auto-commit        true
+            ;; :read-only          false
+            ;; :connection-timeout 30000
+            ;; :validation-timeout 5000
+            ;; :idle-timeout       600000
+            ;; :max-lifetime       1800000
+            ;; :minimum-idle       10
+            ;; :maximum-pool-size  10
+            }}}

@@ -13,6 +13,7 @@
    [zen.core :as zen]
    [ring.middleware.content-type]
    [zenbox.web.router]
+   [zenbox.rpc]
    [zenbox.services :as srv])
   (:use [ring.middleware.resource]
         [ring.middleware.file]
@@ -84,8 +85,40 @@
   (fn [req]
     (handle-static h req)))
 
+(defmulti operation (fn [ztx op req] (:zen/name op)))
+
+(defn rpc [ztx req]
+  (if-let [op (zen/get-symbol ztx (:method req))]
+    (if-let [schemas (:params op)]
+      (let  [{:keys [errors]} (zen/validate ztx schemas (:params req))]
+        (if (empty? errors)
+          (zenbox.rpc/rpc ztx op req)
+          {:error errors}))
+      (zenbox.rpc/rpc ztx op req))
+    {:error {:message (str "No operation defined for " (:method req))}}))
+
+(defmethod operation
+  'zenbox/json-rpc
+  [ztx op req]
+  (try
+    (let [resource (:resource req)
+          resp     (rpc ztx resource)]
+      (if (:result resp)
+        {:status 200 :body resp}
+        {:status 422 :body resp}))
+    (catch Exception e
+      (println "ERROR:" e)
+      {:status 500 :body {:error (str e)}})))
+
+(defn dispatch-op [ztx route request]
+  (if route
+    (if-let [op (zen/get-symbol ztx (get-in route [:match :operation]))]
+      (operation ztx op (assoc request :route-params (:params route)))
+      {:status 404 :body "No operation definition"})
+    {:status 404 :body "No route"}))
+
 (defn start
-  [ctx dispatch-op]
+  [ctx]
   (->> (zen/get-tag ctx 'zenbox/server)
        (map (fn [sym] (zen/get-symbol ctx sym)))
        (mapv (fn [srv-def]
@@ -99,7 +132,8 @@
                                  (wrap-static))
                      ;; todo add more http-kit configs
                      srv (http-kit/run-server handler srv-def)]
-                 (swap! ctx assoc-in [:zenbox/servers (:zen/name srv-def)] {:server srv :handler handler :def srv-def}))))))
+                 (swap! ctx assoc-in [:zenbox/servers (:zen/name srv-def)] {:server srv :handler handler :def srv-def})))))
+  ::started)
 
 
 (defn stop [ctx]

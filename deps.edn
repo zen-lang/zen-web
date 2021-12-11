@@ -10,6 +10,8 @@
          zen-lang/zen              {:git/url "https://github.com/zen-lang/zen"
                                     :sha "a376f197902330473cf688eb3ff02f69094677de"}
 
+         org.clojure/data.xml      {:mvn/version "0.2.0-alpha6"}
+
          dsql/dsql                 {:git/url "https://github.com/HealthSamurai/dsql"
                                     :sha "1086f64180d7f601ffff0335139594ccef2d2a7b"}
 

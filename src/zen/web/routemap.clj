@@ -1,5 +1,6 @@
 (ns zen.web.routemap
   (:require [clojure.string :as str]
+            [zen.web.methods :as meth]
             [zen.core :as zen]))
 
 (defn pathify [path]
@@ -34,78 +35,81 @@
   [x]
   (instance? java.util.regex.Pattern x))
 
-(defn -match [ztx acc node [x & rpth :as pth] params parents wgt]
-  (if (nil? node)
-    acc
-    (if (empty? pth)
-      (conj acc
-            {:parents parents :op node :w wgt :params params
-             :path (conj (or (:path (last acc)) []) x)})
-      (let [pnode (and (map? node) (assoc node :params params :path x))
-            acc (if-let [apis (:apis node)]
-                  (->> apis
-                       (reduce (fn [acc api-sym]
-                                 (if-let [api (zen/get-symbol ztx api-sym)]
-                                   (-match ztx acc api pth params parents wgt)
-                                   acc))
-                               acc))
-                  acc)
-            acc (if-let [branch (get node x)]
-                  (-match ztx acc branch rpth params (conj parents pnode) (+ wgt 10))
-                  acc)]
-        (if (keyword? x)
-          acc
-          (->> (get-params node)
-               (reduce (fn [acc [[k] branch]]
-                         (-match ztx acc branch rpth (assoc params k x) (conj parents pnode) (+ wgt 2)))
-                       acc)))))))
+(defn match [ztx
+             {node-mws :middlewares :as node}
+             [x & rpath :as path]
+             {params :params mws :middlewares :as ctx}]
+  (if (empty? path)
+    (when (symbol? node) ;; match!
+      (assoc ctx :op node))
+    ;; try exact branch
+    (let [ctx (cond-> ctx
+                node-mws (update :middlewares (fn [x] (into (or x []) node-mws))))]
+      (if-let [res (when-let [next-node (get node x)]
+                     (match ztx next-node rpath (-> ctx
+                                                    (update :path (fn [p] (conj (or p []) x)))
+                                                    (update :resolution-path (fn [p] (conj (or p []) x))))))]
+        res
+        ;; try params branches [:param]
+        (if-let [res (->> (get-params node)
+                          (map (fn [[[k] next-node]]
+                                 (match ztx next-node rpath (->
+                                                             ctx
+                                                             (assoc-in [:params k] x)
+                                                             (update :path (fn [p] (conj (or p []) k)))
+                                                             (update :resolution-path (fn [p] (conj (or p []) [k])))))))
+                          (filter identity)
+                          (first))]
+          res
+          (when-let [apis (:apis node)] ;; try apis
+            (->> apis
+                 (map (fn [api-name]
+                        (if-let [api (zen/get-symbol ztx api-name)]
+                          (meth/resolve-route ztx api path ctx)
+                          (do
+                            (zen/error ztx 'zen.web/api-not-found {:api api-name})
+                            nil))))
+                 (filter identity)
+                 (first))))))))
+
+(defmethod meth/resolve-route
+  'zen.web/routemap
+  [ztx cfg path ctx]
+  (match ztx cfg path (-> ctx
+                          (update :resolution-path (fn [p] (conj (or p []) (:zen/name cfg)))))))
 
 
-(defn resolve-route
-  [ztx config {uri :uri meth :request-method :as request} & [session]]
-  (let [config (if (symbol? config) (zen/get-symbol ztx config) config)
-        path (conj (pathify uri) (-> (or meth :get) name str/upper-case keyword))
-        result (-match ztx  [] config path {} [] 0)]
-    (when-let [res (->> result (sort-by :w) last)]
-      (assoc res :route/path path))))
+(defn routes [ztx cfg ctx]
+  (let [ctx (cond-> ctx (:middlewares cfg)
+                    (update :middlewares into (:middlewares cfg)))]
+    (->> cfg
+         (reduce (fn [acc [k v]]
+                   (cond
+                     (contains? #{:GET :POST :PUT :DELETE :OPTION :PATCH} k)
+                     (conj acc (-> ctx
+                                   (update :path conj k)
+                                   (update :by conj k)
+                                   (assoc :op v)))
 
+                     (string? k)
+                     (into acc (routes ztx v (-> (update ctx :path conj k)
+                                                 (update :by conj k))))
+                     (vector? k)
+                     (into acc (routes ztx v (-> ctx
+                                                 (update :path conj (first k))
+                                                 (update :params conj (first k))
+                                                 (update :by conj k))))
+                     (= :apis k)
+                     (->> v
+                          (reduce (fn [acc api-name]
+                                    (if-let [api (zen/get-symbol ztx api-name)]
+                                      (into acc (meth/routes ztx api ctx))
+                                      acc))
+                                  acc))
+                     :else acc))
+                 []))))
 
-;; (defn apis-paths [ctx api path acc]
-;;   (let [acc (if-let [apis (:apis api)]
-;;               (->> apis
-;;                    (mapv (fn [srv-nm] (zen/get-symbol ctx srv-nm)))
-;;                    (reduce (fn [acc next-api]
-;;                              (apis-paths ctx next-api path acc)
-;;                              ) acc))
-;;               acc)]
-;;     (->> api
-;;          (reduce (fn [acc [k v]]
-;;                    (cond
-;;                      (contains? #{:GET :POST :PUT :PATCH :OPTION :DELETE} k)
-;;                      (conj acc (merge v {:path path
-;;                                          :method k
-;;                                          :uri (str "/" (str/join "/" path))}))
-
-;;                      (string? k)
-;;                      (apis-paths ctx v (conj path k) acc)
-
-;;                      (and (vector? k) (keyword? (first k)))
-;;                      (apis-paths ctx v (conj path
-;;                                              (first k)
-;;                                              ;; (str "{" (subs (str (first k)) 1) "}")
-;;                                              ) acc)
-
-;;                      :else acc))
-;;                  acc))))
-
-;; (defn get-all-paths [ctx]
-;;   (->> (zen/get-tag ctx 'zenbox/server)
-;;        (mapv (fn [srv-nm] (zen/get-symbol ctx srv-nm)))
-;;        (reduce (fn [acc srv]
-;;                  (apis-paths ctx (select-keys srv [:apis]) [] acc))
-;;                [])
-;;        (sort-by (fn [x] [(:uri x) (:method x)]))))
-
-;; (defn get-api-paths [ctx api]
-;;   (->> (apis-paths ctx api [] [])
-;;        (sort-by (fn [x] [(:uri x) (:method x)]))))
+(defmethod meth/routes
+  'zen.web/routemap
+  [ztx cfg ctx]
+  (routes ztx cfg (update ctx :by conj (:zen/name cfg))))

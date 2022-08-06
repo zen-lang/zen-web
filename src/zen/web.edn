@@ -12,17 +12,34 @@
  {:zen/tags #{zen/tag}
   :zen/desc "API engine"}
 
- route-map
+ routemap
  {:zen/tags #{zen/schema api-engine}
   :type zen/map
   :values {:type zen/any}}
+
+ middleware-engine
+ {:zen/tags #{zen/tag}
+  :zen/desc "API engine"}
+
+ middleware
+ {:zen/tags #{zen/tag zen/schema}
+  :zen/desc "Middleware tag"
+  :type zen/map
+  :schema-key {:key :engine}
+  :keys {:engine {:type zen/symbol :tags #{middleware-engine}}}}
+
+ debug-middleware
+ {:zen/tags #{middleware}
+  :zen/desc "prints request into stdout"}
 
  api
  {:zen/tags #{zen/tag zen/schema}
   :zen/desc "API interface"
   :type zen/map
   :schema-key {:key :engine}
-  :keys {:engine {:type zen/symbol :tags #{api-engine}}}}
+  :keys {:engine {:type zen/symbol :tags #{api-engine}}
+         :middlewares {:type zen/vector
+                       :every {:type zen/symbol :tags #{middleware}}}}}
 
  http-engine
  {:zen/tags #{zen/tag}
@@ -50,11 +67,20 @@
  op
  {:zen/tags #{zen/tag}}
 
- basic-op
- {:zen/tags #{zen/tag op-engine}}
+ response-op
+ {:zen/tags #{zen/tag op-engine zen/schema}
+  :type zen/map
+  :keys {:response {:type zen/map
+                    :values {:type zen/any}}}}
 
  rpc
  {:zen/tags #{op}}
+
+ rpc-api
+ {:zen/tags #{api}
+  :engine routemap
+  :zen/desc "Default RPC API - POST /"
+  :POST rpc}
 
 
  }

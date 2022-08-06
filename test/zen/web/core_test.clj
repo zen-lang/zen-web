@@ -27,13 +27,13 @@
 
      admin-api
      {:zen/tags #{zen.web/api}
-      :engine zen.web/route-map
+      :engine zen.web/routemap
       ;; :middleware [basic-auth]
       :GET admin-index-op}
 
      api
      {:zen/tags #{zen.web/api}
-      :engine zen.web/route-map
+      :engine zen.web/routemap
       :apis [admin-api]
       :GET index-op
       :POST zen.web/rpc

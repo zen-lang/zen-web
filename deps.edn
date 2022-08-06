@@ -1,6 +1,6 @@
 {:paths ["src" "zrc"]
  :deps {org.clojure/clojure  {:mvn/version "1.11.1"}
-        http-kit/http-kit    {:mvn/version "2.1.19"}
+        http-kit/http-kit    {:mvn/version "2.7.0-alpha1"}
         cheshire/cheshire    {:mvn/version "5.11.0"}
         clj-commons/clj-yaml {:mvn/version "0.7.108"}
         zen-lang/zen         {:git/url "https://github.com/zen-lang/zen"

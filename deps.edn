@@ -1,0 +1,39 @@
+{:paths ["src" "zrc"]
+ :deps {org.clojure/clojure  {:mvn/version "1.11.1"}
+        http-kit/http-kit    {:mvn/version "2.1.19"}
+        cheshire/cheshire    {:mvn/version "5.11.0"}
+        clj-commons/clj-yaml {:mvn/version "0.7.108"}
+        zen-lang/zen         {:git/url "https://github.com/zen-lang/zen"
+                              :sha "b6ea8e5dd130febc57dfdc270993d78b4ae20d8f"}}
+
+ :aliases
+ {:nrepl
+  {:extra-paths []
+   :extra-deps  {cider/cider-nrepl {:mvn/version "LATEST"}}
+   :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]
+
+   :main-opts   ["-m" "nrepl.cmdline"
+                 "-b" "0.0.0.0"
+                 "--middleware"
+                 "[cider.nrepl/cider-middleware]"]}
+
+  :test {:extra-paths ["test"]
+         :extra-deps {healthsamurai/matcho {:mvn/version "0.3.9"}}
+         :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]}
+
+  :outdated {:extra-deps {olical/depot {:mvn/version "1.7.0"}}
+             :main-opts ["-m" "depot.outdated.main"]}
+
+  :kaocha
+  {:extra-deps {lambdaisland/kaocha  {:mvn/version "1.0-612"}}
+   :extra-paths ["runner" "test"]
+   :jvm-opts    ^:replace ["-XX:-OmitStackTraceInFastThrow"]
+   :main-opts   ["-m" "kaocha.runner" "--config-file" "test/test.edn"]}
+
+  :build
+  {:extra-paths ["build"]
+   :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]
+   :extra-deps {io.github.clojure/tools.build {:git/url "https://github.com/clojure/tools.build"
+                                               :tag "v0.2.1"
+                                               :sha "68c494645d127d5e24c705d5f9014370c8054d04"}}
+   :ns-default  build}}}

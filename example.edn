@@ -1,0 +1,30 @@
+{ns myapp
+ import #{zen.web}
+
+ index-op
+ {:zen/tags #{zen.web/simple-op}
+  :response {:status 200
+             :body "Hello"}}
+
+ admin-api
+ {:zen/tags #{zen.web/routes}}
+
+ api
+ {:zen/tags #{zen.web/routes}
+  :engine zen.web/route-map
+  :apis [admin-api]
+  :middleware [basic-auth]
+  :GET index-op
+  :POST zen.web/rpc}
+
+ http
+ {:zen/tags #{zen/start zen.web/http}
+  :engine zen.web/httpkit
+  :port 8080
+  :formats #{zen.web/json zen.web/yaml zen.web/html}}
+
+ system
+ {:zen/tags #{zen/system}
+  :start [http]}
+
+ }

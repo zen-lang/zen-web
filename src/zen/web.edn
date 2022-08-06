@@ -1,9 +1,60 @@
 {ns zen.web
 
+ resolve-route
+ {:zen/tags #{zen/op}
+  :zen/desc "Resolve route. Get request and return op, middlewares and route-params"}
+
+ dispatch
+ {:zen/tags #{zen/op}
+  :zen/desc "Dispatch request to op"}
+
+ api-engine
+ {:zen/tags #{zen/tag}
+  :zen/desc "API engine"}
+
+ route-map
+ {:zen/tags #{zen/schema api-engine}
+  :type zen/map
+  :values {:type zen/any}}
+
+ api
+ {:zen/tags #{zen/tag zen/schema}
+  :zen/desc "API interface"
+  :type zen/map
+  :schema-key {:key :engine}
+  :keys {:engine {:type zen/symbol :tags #{api-engine}}}}
+
+ http-engine
+ {:zen/tags #{zen/tag}
+  :zen/desc "HTTP Server engine"}
+
+ http
+ {:zen/tags #{zen/tag zen/schema}
+  :zen/desc "HTTP server interface"
+  :type zen/map
+  :require #{:port}
+  :keys {:engine {:type zen/symbol :tags #{http-engine}}
+         :port   {:type zen/integer}
+         :api    {:type zen/symbol :tags #{api}}}}
+
+ httpkit
+ {:zen/tags #{zen/schema http-engine}
+  :zen/desc "HTTP Server implementation by httpkit"
+  :type zen/map
+  :values {:type zen/any}}
 
 
+ op-engine
+ {:zen/tags #{zen/tag}}
 
+ op
+ {:zen/tags #{zen/tag}}
 
+ basic-op
+ {:zen/tags #{zen/tag op-engine}}
+
+ rpc
+ {:zen/tags #{op}}
 
 
  }

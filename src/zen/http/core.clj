@@ -1,12 +1,15 @@
-(ns zen.web.core
+(ns zen.http.core
   (:require [zen.core :as zen]
-            [zen.web.methods :as meth]
+            [zen.http.methods :as meth]
             [clojure.string :as str]
-            [zen.web.httpkit]
-            [zen.web.routemap]))
+            [zen.http.httpkit]
+            [zen.http.routemap]))
 
-(defn prepare-request  [ztx request])
-(defn prepare-response [ztx request response])
+(defn prepare-request  [ztx request]
+  )
+
+(defn prepare-response [ztx request response]
+  )
 
 (def initial-ctx {:path [] :params {} :middlewares []})
 (defn resolve-route

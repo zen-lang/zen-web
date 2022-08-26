@@ -1,6 +1,6 @@
-(ns zen.web.routemap
+(ns zen.http.routemap
   (:require [clojure.string :as str]
-            [zen.web.methods :as meth]
+            [zen.http.methods :as meth]
             [zen.core :as zen]))
 
 (defn pathify [path]
@@ -67,13 +67,13 @@
                         (if-let [api (zen/get-symbol ztx api-name)]
                           (meth/resolve-route ztx api path ctx)
                           (do
-                            (zen/error ztx 'zen.web/api-not-found {:api api-name})
+                            (zen/error ztx 'zen.http/api-not-found {:api api-name})
                             nil))))
                  (filter identity)
                  (first))))))))
 
 (defmethod meth/resolve-route
-  'zen.web/routemap
+  'zen.http/routemap
   [ztx cfg path ctx]
   (match ztx cfg path (-> ctx
                           (update :resolution-path (fn [p] (conj (or p []) (:zen/name cfg)))))))
@@ -110,6 +110,6 @@
                  []))))
 
 (defmethod meth/routes
-  'zen.web/routemap
+  'zen.http/routemap
   [ztx cfg ctx]
   (routes ztx cfg (update ctx :by conj (:zen/name cfg))))

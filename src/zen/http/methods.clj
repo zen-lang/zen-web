@@ -1,4 +1,4 @@
-(ns zen.web.methods
+(ns zen.http.methods
   (:require [zen.core :as zen]))
 
 (defmulti resolve-route
@@ -8,7 +8,7 @@
 (defmethod resolve-route
   :default
   [ztx cfg _path ctx]
-  (zen/error ztx 'zen.web/no-resolve-route-method {:method (zen/engine-or-name cfg) :path (:path ctx)})
+  (zen/error ztx 'zen.http/no-resolve-route-method {:method (zen/engine-or-name cfg) :path (:path ctx)})
   nil)
 
 (defmulti routes
@@ -19,5 +19,5 @@
 (defmethod routes
   :default
   [ztx cfg ctx]
-  [(-> (assoc ctx :op 'unknown :error (str "method zen.web.methods/routes is not implemented for " (:zen/name cfg)))
+  [(-> (assoc ctx :op 'unknown :error (str "method zen.http.methods/routes is not implemented for " (:zen/name cfg)))
        (update :path conj :?))])

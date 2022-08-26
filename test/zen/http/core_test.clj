@@ -1,50 +1,50 @@
-(ns zen.web.core-test
+(ns zen.http.core-test
   (:require
    [zen.core :as zen]
-   [zen.web.core :as web]
+   [zen.http.core :as web]
    [clojure.test :as t]))
 
-(t/deftest test-zen-web
+(t/deftest test-zen.http
 
   (def ztx (zen/new-context {}))
 
   (zen/load-ns
    ztx
    '{ns myweb
-     import #{zen.web}
+     import #{zen.http}
 
      index-op
-     {:zen/tags #{zen/op zen.web/op}
-      :engine zen.web/basic-op
+     {:zen/tags #{zen/op zen.http/op}
+      :engine zen.http/response-op
       :response {:status 200
                  :body "Hello"}}
 
      admin-index-op
-     {:zen/tags #{zen/op zen.web/op}
-      :engine zen.web/basic-op
+     {:zen/tags #{zen/op zen.http/op}
+      :engine zen.http/response-op
       :response {:status 200
                  :body "Hello"}}
 
      admin-api
-     {:zen/tags #{zen.web/api}
-      :engine zen.web/routemap
+     {:zen/tags #{zen.http/api}
+      :engine zen.http/routemap
       ;; :middleware [basic-auth]
       :GET admin-index-op}
 
      api
-     {:zen/tags #{zen.web/api}
-      :engine zen.web/routemap
+     {:zen/tags #{zen.http/api}
+      :engine zen.http/routemap
       :apis [admin-api]
       :GET index-op
-      :POST zen.web/rpc
+      :POST zen.http/rpc
       "admin" {:apis [admin-api]}}
 
      http
-     {:zen/tags #{zen/start zen.web/http}
-      :engine zen.web/httpkit
+     {:zen/tags #{zen/start zen.http/http}
+      :engine zen.http/httpkit
       :port 8080
       :api api
-      ;; :formats #{zen.web/json zen.web/yaml zen.web/html}
+      ;; :formats #{zen.http/json zen.http/yaml zen.http/html}
       }
 
      system
@@ -55,14 +55,14 @@
 
   (t/is (empty? (zen/errors ztx)))
 
-  (zen/get-symbol ztx 'zen.web/http)
+  (zen/get-symbol ztx 'zen.http/http)
   (zen/get-symbol ztx 'zen/system)
 
   (zen/errors ztx)
 
-  (web/resolve-route ztx 'myweb/api {:path [:get]})
+  (web/resolve-route ztx 'myweb/api {:path [:GET]})
 
-  (web/resolve-route ztx 'myweb/api {:path ["admin" :get]})
+  (web/resolve-route ztx 'myweb/api {:path ["admin" :GET]})
 
   (web/dispatch ztx 'myweb/api {:uri "/"})
 

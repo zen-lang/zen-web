@@ -1,4 +1,4 @@
-{ns zen.web
+{ns zen.http
 
  resolve-route
  {:zen/tags #{zen/op}
@@ -81,6 +81,5 @@
   :engine routemap
   :zen/desc "Default RPC API - POST /"
   :POST rpc}
-
 
  }

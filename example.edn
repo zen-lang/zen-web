@@ -1,27 +1,27 @@
 {ns myapp
- import #{zen.web}
+ import #{zen.http}
 
  index-op
- {:zen/tags #{zen.web/simple-op}
+ {:zen/tags #{zen.http/simple-op}
   :response {:status 200
              :body "Hello"}}
 
  admin-api
- {:zen/tags #{zen.web/routes}}
+ {:zen/tags #{zen.http/routes}}
 
  api
- {:zen/tags #{zen.web/routes}
-  :engine zen.web/route-map
+ {:zen/tags #{zen.http/routes}
+  :engine zen.http/route-map
   :apis [admin-api]
   :middleware [basic-auth]
   :GET index-op
-  :POST zen.web/rpc}
+  :POST zen.http/rpc}
 
  http
- {:zen/tags #{zen/start zen.web/http}
-  :engine zen.web/httpkit
+ {:zen/tags #{zen/start zen.http/http}
+  :engine zen.http/httpkit
   :port 8080
-  :formats #{zen.web/json zen.web/yaml zen.web/html}}
+  :formats #{zen.http/json zen.http/yaml zen.http/html}}
 
  system
  {:zen/tags #{zen/system}

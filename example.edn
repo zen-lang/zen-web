@@ -17,11 +17,27 @@
   :GET index-op
   :POST zen.http/rpc}
 
+
+ formats-middleware
+ {:zen/tags #{zen.http/middleware}
+  :engine zen.http/formats-middleware
+  :formats #{zen.http/json zen.http/yaml zen.http/transit zen.http/html}}
+
+ basic-auth
+ {:zen/tags #{zen.http/middleware}
+  :engine zen.http/basic-auth
+  :users [{:login "admin" :password "u134zp2n"}]}
+
+ dispatch
+ {:zen/tags #{zen/op zen.http/dispatch}
+  :apis [api]}
+
  http
  {:zen/tags #{zen/start zen.http/http}
   :engine zen.http/httpkit
   :port 8080
-  :formats #{zen.http/json zen.http/yaml zen.http/html}}
+  :middlewares [formats basic-auth]
+  :dispatch dispatch}
 
  system
  {:zen/tags #{zen/system}

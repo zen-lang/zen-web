@@ -44,7 +44,7 @@
       :engine zen.http/httpkit
       :port 8080
       :api api
-      ;; :formats #{zen.http/json zen.http/yaml zen.http/html}
+      :formats #{zen.http/json zen.http/yaml zen.http/html}
       }
 
      system

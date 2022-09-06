@@ -10,7 +10,7 @@
         ring/ring-defaults        {:mvn/version "0.3.3"}
 
         zen-lang/zen              {:git/url "https://github.com/zen-lang/zen"
-                                   :sha "b6ea8e5dd130febc57dfdc270993d78b4ae20d8f"}}
+                                   :sha "4f6f21943f8fd09809c02e719643444bce06049d"}}
 
  :aliases
  {:nrepl

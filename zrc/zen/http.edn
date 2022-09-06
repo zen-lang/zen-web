@@ -120,7 +120,7 @@
   :keys {:engine {:type zen/symbol :tags #{http-engine}}
          :port   {:type zen/integer}
          :api    {:type zen/symbol :tags #{api}}
-         :formats {:type zen/vector
+         :formats {:type zen/set
                    :every {:type zen/symbol :tags #{format}}}}}
 
  ;; :defaults {ip         "0.0.0.0"
@@ -156,6 +156,7 @@
 
  request
  {:zen/tags #{zen/schema}
+  :type zen/map
   :zen/desc "HTTP Request"
   :keys {:request-method {:type zen/keyword}
          :uri {:type zen/string}

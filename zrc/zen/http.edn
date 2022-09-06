@@ -45,7 +45,6 @@
  {:zen/tags #{zen/tag}
   :zen/desc "HTTP Server engine"}
 
-
  op-engine
  {:zen/tags #{zen/tag}}
 
@@ -135,24 +134,30 @@
  ;;            server-header "http-kit"}
 
  httpkit
- {:zen/tags #{zen/schema http-engine}
+ {:zen/tags #{zen/schema zen/engine zen.http/http-engine}
   :zen/desc "HTTP Server implementation by httpkit"
+  :zen/state-key :http
   :type zen/map
   :keys
   {:httpkit
    {:type zen/map
-    :keys {:ip                 {:type zen/string :zen/desc "Which ip (if has many ips) to bind"}
-           :thread             {:type zen/integer :zen/desc "Http worker thread count"}
-           :queue-size         {:type zen/integer :zen/desc "Max job queued before reject to project self"}
-           :max-body           {:type zen/integer :zen/desc "Max http body: 8m"}
-           :max-ws             {:type zen/integer :zen/desc "Max websocket message size"}
-           :max-line           {:type zen/integer :zen/desc "Max http inital line length"}
+    :keys {:ip                 {:type zen/string
+                                :zen/desc "Which ip (if has many ips) to bind"}
+           :thread             {:type zen/integer
+                                :zen/desc "Http worker thread count"}
+           :queue-size         {:type zen/integer
+                                :zen/desc "Max job queued before reject to project self"}
+           :max-body           {:type zen/integer
+                                :zen/desc "Max http body: 8m"}
+           :max-ws             {:type zen/integer
+                                :zen/desc "Max websocket message size"}
+           :max-line           {:type zen/integer
+                                :zen/desc "Max http inital line length"}
            :proxy-protocol     {:type zen/keyword
                                 :zen/desc "Proxy protocol e/o #{:disable :enable :optional}"
                                 :enum [{:value :disable}
                                        {:value :enable}
-                                       {:value :optional}]}
-           }}}}
+                                       {:value :optional}]}}}}}
 
  request
  {:zen/tags #{zen/schema}

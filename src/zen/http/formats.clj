@@ -1,7 +1,6 @@
 (ns zen.http.formats
   (:require [zen.http.methods :as meth]))
 
-
 (defmethod meth/middleware-in
   'zen.http/formats-middleware
   [ztx cfg request]

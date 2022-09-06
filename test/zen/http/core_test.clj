@@ -8,6 +8,8 @@
 
   (def ztx (zen/new-context {}))
 
+  (zen/stop-system ztx)
+
   (zen/load-ns
    ztx
    '{ns myweb
@@ -44,27 +46,26 @@
       :engine zen.http/httpkit
       :port 8080
       :api api
-      :formats #{zen.http/json zen.http/yaml zen.http/html}
-      }
+      :formats #{zen.http/json zen.http/yaml zen.http/html}}
 
      system
      {:zen/tags #{zen/system}
-      :start [http]}
-
-     })
+      :start [http]}})
 
   (t/is (empty? (zen/errors ztx)))
 
   (zen/get-symbol ztx 'zen.http/http)
   (zen/get-symbol ztx 'zen/system)
 
-  (zen/errors ztx)
+  (zen/start-system ztx 'myweb/system)
 
   (web/resolve-route ztx 'myweb/api {:path [:GET]})
 
   (web/resolve-route ztx 'myweb/api {:path ["admin" :GET]})
 
   (web/dispatch ztx 'myweb/api {:uri "/"})
+
+  (zen/stop-system ztx)
 
   ;; (sys/send ztx 'example/web 'web/dispatch {:uri "/Patient"})
   ;; (sys/send ztx 'example/web 'web/rpc {:method 'example/pt-search :params {}})

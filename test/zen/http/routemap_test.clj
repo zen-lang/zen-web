@@ -63,7 +63,7 @@
     admin-api
     {:zen/tags #{zen.http/api}
      :engine zen.http/routemap
-     :middlewares [zen.http/debug-middleware]
+     :mw [zen.http/debug-middleware]
      "users" {:GET get-users-op
               [:id] {:GET get-user-op}}}
 
@@ -87,7 +87,7 @@
     {:zen/tags #{zen.http/api}
      :engine zen.http/routemap
      :apis [zen.http/rpc-api]
-     :middlewares []
+     :mw []
      :GET index-op
      ".well-known" {:GET well-known-op}
      "Patient" {[:id] {:GET get-pt-op}}

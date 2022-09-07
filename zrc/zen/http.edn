@@ -170,7 +170,4 @@
          :params {:type zen/map
                   :values {:type zen/any}}
          :query-string {:type zen/string}
-         :body {:type zen/any}}}
-
-
- }
+         :body {:type zen/any}}}}

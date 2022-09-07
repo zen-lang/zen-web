@@ -36,7 +36,7 @@
   (instance? java.util.regex.Pattern x))
 
 (defn match [ztx
-             {node-mws :middlewares :as node}
+             {node-mws :mw :as node}
              [x & rpath :as path]
              {params :params mws :middlewares :as ctx}]
   (if (empty? path)
@@ -80,8 +80,8 @@
 
 
 (defn routes [ztx cfg ctx]
-  (let [ctx (cond-> ctx (:middlewares cfg)
-                    (update :middlewares into (:middlewares cfg)))]
+  (let [ctx (cond-> ctx (:mw cfg)
+                    (update :middlewares into (:mw cfg)))]
     (->> cfg
          (reduce (fn [acc [k v]]
                    (cond

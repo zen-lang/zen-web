@@ -25,18 +25,21 @@
      {:zen/tags #{zen/op zen.http/op}
       :engine zen.http/response-op
       :response {:status 200
-                 :body "Hello"}}
+                 :body "Hello, admin"}}
+
+     basic-auth
+     {:zen/tags #{zen.http/middleware}}
 
      admin-api
      {:zen/tags #{zen.http/api}
       :engine zen.http/routemap
-      ;; :middleware [basic-auth]
+      :mw [basic-auth]
       :GET admin-index-op}
 
      api
      {:zen/tags #{zen.http/api}
       :engine zen.http/routemap
-      :apis [admin-api]
+;;      :apis [admin-api]
       :GET index-op
       :POST zen.http/rpc
       "admin" {:apis [admin-api]}}
@@ -61,6 +64,9 @@
 
   (t/is (= {:status 200, :body "Hello"}
            (web/dispatch ztx 'myweb/api {:uri "/" :request-method :get})))
+
+  (t/is (= {:status 200, :body "Hello, admin"}
+           (web/dispatch ztx 'myweb/api {:uri "/admin" :request-method :get})))
 
   (zen/stop-system ztx)
 

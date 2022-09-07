@@ -33,6 +33,6 @@
   "encode format"
   (fn [_ztx cfg data] (zen/engine-or-name cfg)))
 
-(defmulti dencode-format
+(defmulti decode-format
   "encode format"
   (fn [_ztx cfg data] (zen/engine-or-name cfg)))

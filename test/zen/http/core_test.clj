@@ -6,9 +6,9 @@
 
 (t/deftest test-zen.http
 
-  (def ztx (zen/new-context {}))
+  #_(zen/stop-system ztx)
 
-  (zen/stop-system ztx)
+  (def ztx (zen/new-context {}))
 
   (zen/load-ns
    ztx
@@ -59,11 +59,8 @@
 
   (zen/start-system ztx 'myweb/system)
 
-  (web/resolve-route ztx 'myweb/api {:path [:GET]})
-
-  (web/resolve-route ztx 'myweb/api {:path ["admin" :GET]})
-
-  (web/dispatch ztx 'myweb/api {:uri "/"})
+  (t/is (= {:status 200, :body "Hello"}
+           (web/dispatch ztx 'myweb/api {:uri "/" :request-method :get})))
 
   (zen/stop-system ztx)
 

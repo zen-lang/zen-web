@@ -113,7 +113,6 @@
     :resolution-path ['myweb/route ".well-known" :GET],
     :middlewares empty?})
 
-
   ;; test match with params
   (matcho/match
    (web/resolve-route ztx 'myweb/route ["Patient" "pt-1" :GET])

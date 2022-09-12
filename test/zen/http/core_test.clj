@@ -39,9 +39,14 @@
       :mw [basic-auth]
       :GET admin-index-op}
 
+     cors
+     {:zen/tags #{zen.http/middleware}
+      :engine zen.http/cors}
+
      api
      {:zen/tags #{zen.http/api}
       :engine zen.http/routemap
+      :mw [cors]
       :GET index-op
       :POST zen.http/rpc
       "admin" {:apis [admin-api]}}
@@ -69,13 +74,19 @@
   (t/is (= {:status 200, :body "Hello"}
            (web/dispatch ztx 'myweb/api {:uri "/" :request-method :get})))
 
-  (t/is (= {:status 401 :body "access denied"}
-           (web/dispatch ztx 'myweb/api {:uri "/admin" :request-method :get})))
+  #_(t/testing "cors mw"
+    (t/is (= {:status 200}
+             (web/dispatch ztx 'myweb/api {:uri "/" :request-method :options}))))
 
-  (t/is (= {:status 200, :body "Hello, admin"}
-           (web/dispatch ztx 'myweb/api {:uri "/admin"
-                                         :request-method :get
-                                         :headers {"authorization" "Basic am9objoxMjM="}})))
+  (t/testing "basic auth mw"
+
+    (t/is (= 401
+             (:status (web/dispatch ztx 'myweb/api {:uri "/admin" :request-method :get}))))
+
+    (t/is (= {:status 200, :body "Hello, admin"}
+             (web/dispatch ztx 'myweb/api {:uri "/admin"
+                                           :request-method :get
+                                           :headers {"authorization" "Basic am9objoxMjM="}}))))
 
   (zen/stop-system ztx)
 

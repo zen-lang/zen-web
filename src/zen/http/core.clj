@@ -43,7 +43,7 @@
                 (if-let [mw-cfg (zen/get-symbol ztx (first mws))]
                   (let [patch (meth/middleware-in ztx mw-cfg req)]
                     (if-let [resp (:zen.http/response patch)]
-                      ;; TODO add headers, deep-merge
+                      ;; TODO add deep-merge
                       resp
                       (recur (rest mws) (merge req patch))))
                   (recur (rest mws) req))))
@@ -53,11 +53,12 @@
               (zen/op-call ztx op req* session))]
         (reduce (fn [resp* mw-symbol]
                   (if-let [mw-cfg (zen/get-symbol ztx mw-symbol)]
-                    (meth/middleware-out ztx mw-cfg req* resp*)
+                    ;; TODO add deep merge
+                    (merge resp* (meth/middleware-out ztx mw-cfg req* resp*))
                     req*))
                 resp
                 mw))
-      {:status 404})))
+      {:status 404 :body "route not found"})))
 
 ;; TODO format response, enable cors, parse body, etc
 (defn handle-request [ztx api-symbol request]
@@ -96,9 +97,8 @@
 
 (defn basic-error [{:keys [request-method]}]
   {:zen.http/response
-   (cond-> {:status 401}
-     (not= request-method :head) (assoc :body "access denied"))
-   :zen.http/headers {"Content-Type" "text/plain"}})
+   (cond-> {:status 401 :headers {"Content-Type" "text/plain"}}
+     (not= request-method :head) (assoc :body "access denied"))})
 
 (defmethod meth/middleware-in 'zen.http/basic-auth
   [ztx {:keys [user password]} req]
@@ -112,4 +112,25 @@
 
 (defmethod meth/middleware-out 'zen.http/basic-auth
   [ztx cfg req resp]
-  resp)
+  )
+
+(defmethod meth/middleware-in 'zen.http/cors
+  [ztx cfg {:keys [request-method headers] :as req}]
+  (when (= :options request-method)
+    {:zen.http/response
+     {:status 200
+      :headers
+      {"Access-Control-Allow-Headers" headers
+       "Access-Control-Allow-Methods" request-method
+       "Access-Control-Allow-Origin" (get headers "origin")
+       "Access-Control-Allow-Credentials" "true"
+       "Access-Control-Expose-Headers"
+       "Location, Transaction-Meta, Content-Location, Category, Content-Type, X-total-count"}}}))
+
+(defmethod meth/middleware-out 'zen.http/cors
+  [ztx cfg req resp]
+  (when-let [origin (get-in req [:headers "origin"])]
+    (update resp :headers merge
+            {"Access-Control-Allow-Origin" origin
+             "Access-Control-Allow-Credentials" "true"
+             "Access-Control-Expose-Headers" "Location, Content-Location, Category, Content-Type, X-total-count"})))

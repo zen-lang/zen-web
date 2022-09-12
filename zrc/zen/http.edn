@@ -173,7 +173,11 @@
          :body {:type zen/any}}}
 
  basic-auth
- {:zen/tags #{zen.http/middleware-engine zen/schema}
+ {:zen/tags #{middleware-engine zen/schema}
   :type zen/map
   :keys {:user {:type zen/string}
-         :password {:type zen/string}}}}
+         :password {:type zen/string}}}
+
+ cors
+ {:zen/tags #{middleware-engine zen/schema}
+  :type zen/map}}

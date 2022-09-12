@@ -5,13 +5,8 @@
             [zen.http.methods :as meth]
             [clojure.string :as str]
             [zen.http.httpkit]
-            [zen.http.routemap :as rm]))
-
-(defn prepare-request  [ztx request]
-  )
-
-(defn prepare-response [ztx request response]
-  )
+            [zen.http.routemap :as rm])
+  (:import java.util.Base64))
 
 (def initial-ctx {:path [] :params {} :middlewares []})
 
@@ -37,8 +32,31 @@
   (let [api-config (zen/get-symbol ztx comp-symbol)
         path (conj (rm/pathify uri) (-> (or meth :get) name str/upper-case keyword))
         session {}]
-    (if-let [{op :op  params :params :as _route} (meth/resolve-route ztx api-config path initial-ctx)]
-      (zen/op-call ztx op (assoc req :route-params params) session)
+    (if-let [{op :op  params :params mw :middlewares :as _route}
+             (meth/resolve-route ztx api-config path initial-ctx)]
+      (let [req*
+            (loop [mws mw
+                   req (assoc req :route-params params)]
+              (if (empty? mws)
+                req
+                ;; TODO add error if middleware not found
+                (if-let [mw-cfg (zen/get-symbol ztx (first mws))]
+                  (let [patch (meth/middleware-in ztx mw-cfg req)]
+                    (if-let [resp (:zen.http/response patch)]
+                      ;; TODO add headers, deep-merge
+                      resp
+                      (recur (rest mws) (merge req patch))))
+                  (recur (rest mws) req))))
+            resp
+            (if (:status req*)
+              req*
+              (zen/op-call ztx op req* session))]
+        (reduce (fn [resp* mw-symbol]
+                  (if-let [mw-cfg (zen/get-symbol ztx mw-symbol)]
+                    (meth/middleware-out ztx mw-cfg req* resp*)
+                    req*))
+                resp
+                mw))
       {:status 404})))
 
 ;; TODO format response, enable cors, parse body, etc
@@ -67,3 +85,31 @@
 (defmethod zen/op 'zen.http/response-op
   [ztx config req & opts]
   (:response config))
+
+(defn byte-transform [direction-fn string]
+  (try
+    (str/join (map char (direction-fn (.getBytes ^String string))))
+    (catch Exception _)))
+
+(defn decode-base64 [string]
+  (byte-transform #(.decode (Base64/getDecoder) ^bytes %) string))
+
+(defn basic-error [{:keys [request-method]}]
+  {:zen.http/response
+   (cond-> {:status 401}
+     (not= request-method :head) (assoc :body "access denied"))
+   :zen.http/headers {"Content-Type" "text/plain"}})
+
+(defmethod meth/middleware-in 'zen.http/basic-auth
+  [ztx {:keys [user password]} req]
+  (if-let [auth (get-in req [:headers "authorization"])]
+    (let [cred (and auth (decode-base64 (last (re-find #"^Basic (.*)$" auth))))
+          [u p] (and cred (str/split (str cred) #":" 2))]
+      (if (and (= user u) (= password p))
+        {:basic-authentication {:u user :p password}}
+        (basic-error req)))
+    (basic-error req)))
+
+(defmethod meth/middleware-out 'zen.http/basic-auth
+  [ztx cfg req resp]
+  resp)

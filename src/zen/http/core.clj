@@ -61,12 +61,22 @@
                 mw))
       {:status 404 :body "route not found"})))
 
-;; TODO format response, enable cors, parse body, etc
-(defn handle-request [ztx api-symbol request]
+;; TODO format response, parse body
+(defn handle [ztx api-symbol {:keys [request-method headers] :as request}]
   (let [parsed-request
         (-> request
             (update :uri codec/url-decode))]
-    (dispatch ztx api-symbol parsed-request)))
+    ;; maybe try to move this to cors middleware?
+    (if (= :options request-method)
+      {:status 200
+       :headers
+       {"Access-Control-Allow-Headers" (get headers "access-control-request-headers")
+        "Access-Control-Allow-Methods" (get headers "access-control-request-method")
+        "Access-Control-Allow-Origin" (get headers "origin")
+        "Access-Control-Allow-Credentials" "true"
+        "Access-Control-Expose-Headers"
+        "Location, Transaction-Meta, Content-Location, Category, Content-Type, X-total-count"}}
+      (dispatch ztx api-symbol parsed-request))))
 
 (defmethod zen/start 'zen.http/httpkit
   [ztx config]
@@ -76,7 +86,7 @@
                 :max-body 20971520}
                config)
         req-fn
-        (fn [request] (handle-request ztx (:api config) request))]
+        (fn [request] (handle ztx (:api config) request))]
     {:server (http-kit/run-server req-fn web-config)}))
 
 (defmethod zen/stop 'zen.http/httpkit
@@ -120,16 +130,7 @@
 (defmethod meth/middleware-in 'zen.http/cors
   [ztx cfg {:keys [request-method headers] :as req}]
   ;; TODO discuss options http meth routing
-  (when (= :options request-method)
-    {:zen.http/response
-     {:status 200
-      :headers
-      {"Access-Control-Allow-Headers" headers
-       "Access-Control-Allow-Methods" request-method
-       "Access-Control-Allow-Origin" (get headers "origin")
-       "Access-Control-Allow-Credentials" "true"
-       "Access-Control-Expose-Headers"
-       "Location, Transaction-Meta, Content-Location, Category, Content-Type, X-total-count"}}}))
+  )
 
 (defmethod meth/middleware-out 'zen.http/cors
   [ztx cfg req resp]
@@ -153,3 +154,10 @@
 (defmethod meth/middleware-out 'zen.http/parse-params
   [ztx cfg req resp]
   )
+
+(defmethod meth/middleware-in 'zen.http/cookies
+  [ztx cfg req]
+  )
+
+(defmethod meth/middleware-out 'zen.http/cookies
+  [ztx cfg req resp])

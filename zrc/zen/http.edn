@@ -184,4 +184,8 @@
 
  parse-params
  {:zen/tags #{middleware-engine zen/schema}
+  :type zen/map}
+
+ cookies
+ {:zen/tags #{middleware-engine zen/schema}
   :type zen/map}}

@@ -58,6 +58,16 @@
      {:zen/tags #{zen.http/middleware}
       :engine zen.http/parse-params}
 
+     cookies
+     {:zen/tags #{zen.http/middleware}
+      :engine zen.http/cookies}
+
+     cookies-op
+     {:zen/tags #{zen/op zen.http/op}
+      :engine zen.http/response-op
+      :select :cookies
+      :response {:status 200}}
+
      api
      {:zen/tags #{zen.http/api}
       :engine zen.http/routemap
@@ -68,6 +78,8 @@
                    ;; TODO implement
                    :POST form-params
                    :GET query-params}
+      "cookies-mw" {:mw [cookies]
+                    :GET cookies-op}
       "admin" {:apis [admin-api]}}
 
      http
@@ -89,15 +101,23 @@
   (web/routes ztx 'myweb/api)
 
   (t/is (= {:status 200, :body "Hello"}
-           (web/dispatch ztx 'myweb/api {:uri "/" :request-method :get})))
+           (web/handle ztx 'myweb/api {:uri "/" :request-method :get})))
 
   (t/testing "cors mw"
-    #_(t/is (= {:status 200}
-               (web/dispatch ztx 'myweb/api {:uri "/" :request-method :options})))
+    "options always returns cors headers"
+    (matcho/match
+     (web/handle ztx 'myweb/api {:uri "/" :request-method :options})
+     {:status 200,
+      :headers not-empty})
+
+    (matcho/match
+     (web/handle ztx 'myweb/api {:uri "/admin" :request-method :options})
+     {:status 200,
+      :headers not-empty})
 
     "if origin is provided cors headers are returned"
     (matcho/match
-     (web/dispatch ztx 'myweb/api {:uri "/"
+     (web/handle ztx 'myweb/api {:uri "/"
                                    :request-method :get
                                    :headers {"origin" "localhost:8080"}})
      {:status 200
@@ -109,18 +129,26 @@
 
   (t/testing "basic auth mw"
 
-    (t/is (= 401 (:status (web/dispatch ztx 'myweb/api {:uri "/admin" :request-method :get}))))
+    (t/is (= 401 (:status (web/handle ztx 'myweb/api {:uri "/admin" :request-method :get}))))
 
     (t/is (= {:status 200, :body "Hello, admin"}
-             (web/dispatch ztx 'myweb/api {:uri "/admin"
+             (web/handle ztx 'myweb/api {:uri "/admin"
                                            :request-method :get
                                            :headers {"authorization" "Basic am9objoxMjM="}}))))
 
   (t/testing "parse querystring mw"
 
     (matcho/match
-     (web/dispatch ztx 'myweb/api {:uri "params-mw" :method :get :query-string "msg=hello+love"})
+     (web/handle ztx 'myweb/api {:uri "/params-mw" :method :get :query-string "msg=hello+love"})
      {:status 200 :body "{:msg \"hello love\"}"}))
+
+  (t/testing "parse cookies mw"
+
+    (matcho/match
+     (web/handle ztx 'myweb/api {:uri "/cookies-mw" :method :get})
+     )
+
+    )
 
   (comment
     #_(zen/start-system ztx 'myweb/system)

@@ -180,4 +180,8 @@
 
  cors
  {:zen/tags #{middleware-engine zen/schema}
+  :type zen/map}
+
+ parse-params
+ {:zen/tags #{middleware-engine zen/schema}
   :type zen/map}}

@@ -1,6 +1,7 @@
 (ns zen.http.core
   (:require [zen.core :as zen]
             [ring.util.codec :as codec]
+            [clojure.walk :as walk]
             [org.httpkit.server :as http-kit]
             [zen.http.methods :as meth]
             [clojure.string :as str]
@@ -85,7 +86,9 @@
 
 (defmethod zen/op 'zen.http/response-op
   [ztx config req & opts]
-  (:response config))
+  (cond-> (:response config)
+    (keyword? (:select config))
+    (assoc :body (str (get req (:select config))))))
 
 (defn byte-transform [direction-fn string]
   (try
@@ -116,6 +119,7 @@
 
 (defmethod meth/middleware-in 'zen.http/cors
   [ztx cfg {:keys [request-method headers] :as req}]
+  ;; TODO discuss options http meth routing
   (when (= :options request-method)
     {:zen.http/response
      {:status 200
@@ -134,3 +138,18 @@
             {"Access-Control-Allow-Origin" origin
              "Access-Control-Allow-Credentials" "true"
              "Access-Control-Expose-Headers" "Location, Content-Location, Category, Content-Type, X-total-count"})))
+
+(defmethod meth/middleware-in 'zen.http/parse-params
+  [ztx cfg {qs :query-string}]
+  ;; TODO implement form-params parsing, other encodings
+  (when qs
+    (let [parsed (walk/keywordize-keys (ring.util.codec/form-decode qs))
+          params (if (string? parsed)
+                   {(keyword parsed) nil}
+                   parsed)]
+      {:params params
+       :query-params params})))
+
+(defmethod meth/middleware-out 'zen.http/parse-params
+  [ztx cfg req resp]
+  )

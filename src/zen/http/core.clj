@@ -6,7 +6,8 @@
             [zen.http.methods :as meth]
             [clojure.string :as str]
             [zen.http.httpkit]
-            [zen.http.routemap :as rm])
+            [zen.http.routemap :as rm]
+            [ring.util.parsing :refer [re-token]])
   (:import java.util.Base64))
 
 (def initial-ctx {:path [] :params {} :middlewares []})
@@ -43,10 +44,13 @@
                 ;; TODO add error if middleware not found
                 (if-let [mw-cfg (zen/get-symbol ztx (first mws))]
                   (let [patch (meth/middleware-in ztx mw-cfg req)]
-                    (if-let [resp (:zen.http/response patch)]
+                    (if-let [resp (and (map? patch) (:zen.http/response patch))]
                       ;; TODO add deep-merge
                       resp
-                      (recur (rest mws) (merge req patch))))
+                      (recur (rest mws)
+                             (if (map? patch)
+                               (merge req patch)
+                               req))))
                   (recur (rest mws) req))))
             resp
             (if (:status req*)
@@ -155,9 +159,24 @@
   [ztx cfg req resp]
   )
 
+(def re-cookie-octet #"[!#$%&'()*+\-./0-9:<=>?@A-Z\[\]\^_`a-z\{\|\}~]")
+
+(def re-cookie-value (re-pattern (str "\"" re-cookie-octet "*\"|" re-cookie-octet "*")))
+
+(def re-cookie (re-pattern (str "\\s*(" re-token ")=(" re-cookie-value ")\\s*[;,]?")))
+
 (defmethod meth/middleware-in 'zen.http/cookies
-  [ztx cfg req]
-  )
+  [ztx cfg {:keys [headers] :as req}]
+  (when-let [cookie (get headers "cookie")]
+    {:cookies
+     (->> (for [[_ name value] (re-seq re-cookie cookie)]
+            [name value])
+          (map (fn [[name value]]
+                 (when-let [value (codec/form-decode-str
+                                   (str/replace value #"^\"|\"$" ""))]
+                   [name {:value value}])))
+          (remove nil?)
+          (into {}))}))
 
 (defmethod meth/middleware-out 'zen.http/cookies
   [ztx cfg req resp])

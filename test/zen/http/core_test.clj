@@ -145,10 +145,12 @@
   (t/testing "parse cookies mw"
 
     (matcho/match
-     (web/handle ztx 'myweb/api {:uri "/cookies-mw" :method :get})
-     )
-
-    )
+     (matcho/match
+      (web/handle ztx 'myweb/api {:uri "/cookies-mw"
+                                  :method :get
+                                  :headers {"cookie" "USER_TOKEN=yes"}})
+      {:status 200
+       :body not-empty})))
 
   (comment
     #_(zen/start-system ztx 'myweb/system)

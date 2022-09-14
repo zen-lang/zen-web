@@ -68,6 +68,17 @@
       :select :cookies
       :response {:status 200}}
 
+     cookie-test
+     {:zen/tags #{zen/op}}
+
+     cookie-set-engine
+     {:zen/tags #{zen/tag zen.http/op-engine zen/schema}
+      :type zen/map}
+
+     cookie-get
+     {:zen/tags #{zen/op zen.http/op}
+      :engine cookie-set-engine}
+
      api
      {:zen/tags #{zen.http/api}
       :engine zen.http/routemap
@@ -79,7 +90,8 @@
                    :POST form-params
                    :GET query-params}
       "cookies-mw" {:mw [cookies]
-                    :GET cookies-op}
+                    :GET cookies-op
+                    "get-cookies" {:GET cookie-get}}
       "admin" {:apis [admin-api]}}
 
      http
@@ -107,25 +119,25 @@
     "options always returns cors headers"
     (matcho/match
      (web/handle ztx 'myweb/api {:uri "/" :request-method :options})
-     {:status 200,
-      :headers not-empty})
+      {:status 200,
+       :headers not-empty})
 
     (matcho/match
      (web/handle ztx 'myweb/api {:uri "/admin" :request-method :options})
-     {:status 200,
-      :headers not-empty})
+      {:status 200,
+       :headers not-empty})
 
     "if origin is provided cors headers are returned"
     (matcho/match
      (web/handle ztx 'myweb/api {:uri "/"
-                                   :request-method :get
-                                   :headers {"origin" "localhost:8080"}})
-     {:status 200
-      :headers
-      {"Access-Control-Allow-Origin" "localhost:8080"
-       "Access-Control-Allow-Credentials" "true"
-       "Access-Control-Expose-Headers"
-       "Location, Content-Location, Category, Content-Type, X-total-count"}}))
+                                 :request-method :get
+                                 :headers {"origin" "localhost:8080"}})
+      {:status 200
+       :headers
+       {"Access-Control-Allow-Origin" "localhost:8080"
+        "Access-Control-Allow-Credentials" "true"
+        "Access-Control-Expose-Headers"
+        "Location, Content-Location, Category, Content-Type, X-total-count"}}))
 
   (t/testing "basic auth mw"
 
@@ -133,33 +145,44 @@
 
     (t/is (= {:status 200, :body "Hello, admin"}
              (web/handle ztx 'myweb/api {:uri "/admin"
-                                           :request-method :get
-                                           :headers {"authorization" "Basic am9objoxMjM="}}))))
+                                         :request-method :get
+                                         :headers {"authorization" "Basic am9objoxMjM="}}))))
 
   (t/testing "parse querystring mw"
 
     (matcho/match
-     (web/handle ztx 'myweb/api {:uri "/params-mw" :method :get :query-string "msg=hello+love"})
-     {:status 200 :body "{:msg \"hello love\"}"}))
+     (web/handle ztx 'myweb/api {:uri "/params-mw"
+                                 :request-method :get
+                                 :query-string "msg=hello+love"})
+      {:status 200 :body "{:msg \"hello love\"}"}))
 
   (t/testing "parse cookies mw"
 
     (matcho/match
      (matcho/match
       (web/handle ztx 'myweb/api {:uri "/cookies-mw"
-                                  :method :get
+                                  :request-method :get
                                   :headers {"cookie" "USER_TOKEN=yes"}})
+       {:status 200
+        :body not-empty}))
+
+    (defmethod zen/op 'myweb/cookie-set-engine
+      [ztx config req & opts]
       {:status 200
-       :body not-empty})))
+       :cookies {"token" {:value "justvalue"
+                          :max-age 1000
+                          :path "/"}
+                 "another-token" "another-value"}})
+
+    (matcho/assert
+     {:status 200
+      :headers {"Set-Cookie" ["token=justvalue;Max-Age=1000;Path=/" "another-token=another-value"]}}
+     (web/handle ztx 'myweb/api {:uri "/cookies-mw/get-cookies" :request-method :get})))
 
   (comment
     #_(zen/start-system ztx 'myweb/system)
-    #_(zen/stop-system ztx)
+    #_(zen/stop-system ztx))
 
-    )
-
-  ;; (sys/send ztx 'example/web 'web/dispatch {:uri "/Patient"})
+;; (sys/send ztx 'example/web 'web/dispatch {:uri "/Patient"})
   ;; (sys/send ztx 'example/web 'web/rpc {:method 'example/pt-search :params {}})
-
-
   )

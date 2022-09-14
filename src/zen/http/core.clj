@@ -7,7 +7,8 @@
             [clojure.string :as str]
             [zen.http.httpkit]
             [zen.http.routemap :as rm]
-            [ring.util.parsing :refer [re-token]])
+            [ring.util.parsing :refer [re-token]]
+            [ring.middleware.cookies :as cookies])
   (:import java.util.Base64))
 
 (def initial-ctx {:path [] :params {} :middlewares []})
@@ -34,7 +35,7 @@
   (let [api-config (zen/get-symbol ztx comp-symbol)
         path (conj (rm/pathify uri) (-> (or meth :get) name str/upper-case keyword))
         session {}]
-    (if-let [{op :op  params :params mw :middlewares :as _route}
+    (if-let [{op :op  params :params mw :middlewares :as route}
              (meth/resolve-route ztx api-config path initial-ctx)]
       (let [req*
             (loop [mws mw
@@ -178,5 +179,34 @@
           (remove nil?)
           (into {}))}))
 
+(def attr-map {:domain "Domain", :max-age "Max-Age", :path "Path"
+               :secure "Secure", :expires "Expires", :http-only "HttpOnly"
+               :same-site "SameSite"})
+
+(def same-site-map {:strict "Strict"
+                    :lax "Lax"
+                    :none "None"})
+
+(defn write-attr-map [attrs]
+  (for [[key value] attrs]
+    (let [attr-name (name (get attr-map key))]
+      (cond
+        (satisfies? cookies/CookieInterval value) (str ";" attr-name "=" (cookies/->seconds value))
+        (satisfies? cookies/CookieDateTime value) (str ";" attr-name "=" (cookies/rfc822-format value))
+        (true? value)  (str ";" attr-name)
+        (false? value) ""
+        (= :same-site key) (str ";" attr-name "=" (get same-site-map value))
+        :else (str ";" attr-name "=" value)))))
+
 (defmethod meth/middleware-out 'zen.http/cookies
-  [ztx cfg req resp])
+  [ztx cfg req resp]
+  (when-let [cookies (:cookies resp)]
+    (let [http-cookies
+          (->> cookies
+               (map (fn [[k v]]
+                      (if (map? v)
+                        (apply str
+                               (codec/form-encode {k (:value v)})
+                               (write-attr-map (dissoc v :value)))
+                        (codec/form-encode {k v})))))]
+      (assoc-in resp [:headers "Set-Cookie"] (vec http-cookies)))))

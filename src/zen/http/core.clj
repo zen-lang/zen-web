@@ -68,9 +68,11 @@
 
 ;; TODO format response, parse body
 (defn handle [ztx api-symbol {:keys [request-method headers] :as request}]
-  (let [parsed-request
-        (-> request
-            (update :uri codec/url-decode))]
+  (let [method-override (and (= :post request-method) (get headers "x-http-method-override"))
+        parsed-request
+        (cond-> request
+          :always (update :uri codec/url-decode)
+          method-override (assoc :request-method (keyword (str/lower-case method-override))))]
     ;; maybe try to move this to cors middleware?
     (if (= :options request-method)
       {:status 200

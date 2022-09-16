@@ -79,6 +79,11 @@
      {:zen/tags #{zen/op zen.http/op}
       :engine cookie-set-engine}
 
+     override-op
+     {:zen/tags #{zen/op zen.http/op}
+      :engine zen.http/response-op
+      :response {:status 200}}
+
      api
      {:zen/tags #{zen.http/api}
       :engine zen.http/routemap
@@ -92,6 +97,7 @@
       "cookies-mw" {:mw [cookies]
                     :GET cookies-op
                     "get-cookies" {:GET cookie-get}}
+      "method-override" {:PUT override-op}
       "admin" {:apis [admin-api]}}
 
      http
@@ -178,6 +184,13 @@
      {:status 200
       :headers {"Set-Cookie" ["token=justvalue;Max-Age=1000;Path=/" "another-token=another-value"]}}
      (web/handle ztx 'myweb/api {:uri "/cookies-mw/get-cookies" :request-method :get})))
+
+  (t/testing "method override works"
+    (matcho/assert
+     {:status 200}
+     (web/handle ztx 'myweb/api {:uri "/method-override"
+                                 :request-method :post
+                                 :headers {"x-http-method-override" "PUT"}})))
 
   (comment
     #_(zen/start-system ztx 'myweb/system)

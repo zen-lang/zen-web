@@ -1,20 +1,19 @@
 (ns zen.http.routemap-test
   (:require [zen.core :as zen]
             [zen.http.core :as web]
-            [zen.http.methods :as meth]
             [zen.http.routemap :as routemap]
             [clojure.test :as t]
             [matcho.core :as matcho]))
 
 
-(defmethod meth/resolve-route
+(defmethod web/resolve-route
   'myweb/custom-api
   [_ztx cfg path ctx]
   (-> (assoc ctx :op 'myweb/custom-op)
       (update :path into path)
       (update :resolution-path into (into [(:zen/name cfg)] path))))
 
-(defmethod meth/routes
+(defmethod web/routes
   'myweb/custom-api
   [_ztx cfg ctx]
   [(-> (assoc ctx :op 'myweb/custom-op)
@@ -97,25 +96,25 @@
 
   (t/is (empty? (zen/errors ztx)))
 
-  (t/is (nil? (web/resolve-route ztx 'myweb/route {:path ["undefined" :GET]})))
+  (t/is (nil? (web/*resolve-route ztx 'myweb/route {:path ["undefined" :GET]})))
 
   ;; test root path
   (matcho/match
-   (web/resolve-route ztx 'myweb/route [:GET])
+   (web/*resolve-route ztx 'myweb/route [:GET])
    {:op 'myweb/index-op
     :resolution-path ['myweb/route :GET],
     :middlewares empty?})
 
   ;; test simple match
   (matcho/match
-   (web/resolve-route ztx 'myweb/route  [".well-known" :GET])
+   (web/*resolve-route ztx 'myweb/route  [".well-known" :GET])
    {:op 'myweb/well-known-op
     :resolution-path ['myweb/route ".well-known" :GET],
     :middlewares empty?})
 
   ;; test match with params
   (matcho/match
-   (web/resolve-route ztx 'myweb/route ["Patient" "pt-1" :GET])
+   (web/*resolve-route ztx 'myweb/route ["Patient" "pt-1" :GET])
    {:op 'myweb/get-pt-op
     :params {:id "pt-1"}
     :resolution-path ['myweb/route "Patient" [:id] :GET],
@@ -123,21 +122,21 @@
 
   ;; test two route engines
   (matcho/match
-   (web/resolve-route ztx 'myweb/route  ["custom" "ups" :GET])
+   (web/*resolve-route ztx 'myweb/route  ["custom" "ups" :GET])
    {:op 'myweb/custom-op
     :resolution-path ['myweb/route "custom" 'myweb/custom-api "ups" :GET]})
 
   ;; test two route maps
 
   (matcho/match
-   (web/resolve-route ztx 'myweb/route  ["admin" "users" :GET])
+   (web/*resolve-route ztx 'myweb/route  ["admin" "users" :GET])
    {:path ["admin" "users" :GET],
     :middlewares ['zen.http/debug-middleware],
     :resolution-path ['myweb/route "admin" 'myweb/admin-api "users" :GET],
     :op 'myweb/get-users-op})
 
   (matcho/match
-   (web/resolve-route ztx 'myweb/route  ["admin" "users" "u-1" :GET])
+   (web/*resolve-route ztx 'myweb/route  ["admin" "users" "u-1" :GET])
    {:path ["admin" "users" :id :GET],
     :params {:id "u-1"},
     :middlewares ['zen.http/debug-middleware],
@@ -147,7 +146,7 @@
   ;; test root api
 
   (matcho/match
-   (web/resolve-route ztx 'myweb/route  [:POST])
+   (web/*resolve-route ztx 'myweb/route  [:POST])
    {:path [:POST],
     :resolution-path ['myweb/route 'zen.http/rpc-api :POST],
     :op 'zen.http/rpc})
@@ -157,7 +156,7 @@
 
   (t/testing "routes"
     (matcho/match
-     (web/routes ztx 'myweb/route)
+     (web/*routes ztx 'myweb/route)
      [{:path [".well-known" :GET],
        :by ['myweb/route ".well-known" :GET],
        :op 'myweb/well-known-op}
@@ -186,8 +185,4 @@
        :op 'myweb/get-user-op}
       {:path ["custom" :* :GET],
        :by ['myweb/route "custom" 'myweb/custom-api],
-       :op 'myweb/custom-op}]))
-
-
-
-  )
+       :op 'myweb/custom-op}])))

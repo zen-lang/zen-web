@@ -90,7 +90,9 @@
       :mw [cors]
       :GET index-op
       :POST zen.http/rpc
-      "params-mw" {:mw [parse-params]
+      #_"search" #_{:api [zd.plugins/search]}
+      "params-mw" {:mw [#_zen.http/defaults
+                        parse-params]
                    ;; TODO implement
                    :POST form-params
                    :GET query-params}
@@ -113,10 +115,10 @@
 
   (t/is (empty? (zen/errors ztx)))
 
-  (zen/get-symbol ztx 'zen.http/http)
-  (zen/get-symbol ztx 'zen/system)
-
-  (web/routes ztx 'myweb/api)
+  (comment
+    (zen/get-symbol ztx 'zen.http/http)
+    (zen/get-symbol ztx 'zen/system)
+    (web/*routes ztx 'myweb/api))
 
   (t/is (= {:status 200, :body "Hello"}
            (web/handle ztx 'myweb/api {:uri "/" :request-method :get})))
@@ -194,8 +196,4 @@
 
   (comment
     #_(zen/start-system ztx 'myweb/system)
-    #_(zen/stop-system ztx))
-
-;; (sys/send ztx 'example/web 'web/dispatch {:uri "/Patient"})
-  ;; (sys/send ztx 'example/web 'web/rpc {:method 'example/pt-search :params {}})
-  )
+    #_(zen/stop-system ztx)))

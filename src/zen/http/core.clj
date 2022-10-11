@@ -3,6 +3,7 @@
             [ring.util.codec :as codec]
             [org.httpkit.server :as http-kit]
             [clojure.string :as str]
+            [zen.http.utils :as utils]
             [zen.http.httpkit]
             [zen.http.routemap :as rm]
             [zen.http.middlewares :as mw]))
@@ -19,12 +20,6 @@
   [ztx cfg req]
   (mw/verify-basic-auth ztx cfg req))
 
-(defmethod middleware-out 'zen.http/basic-auth
-  [ztx cfg req resp])
-
-(defmethod middleware-in 'zen.http/cors
-  [ztx cfg req])
-
 (defmethod middleware-out 'zen.http/cors
   [ztx cfg req resp]
   (mw/set-cors-headers ztx cfg req resp))
@@ -32,9 +27,6 @@
 (defmethod middleware-in 'zen.http/parse-params
   [ztx cfg req]
   (mw/parse-params ztx cfg req))
-
-(defmethod middleware-out 'zen.http/parse-params
-  [ztx cfg req resp])
 
 (defmethod middleware-in 'zen.http/cookies
   [ztx cfg req]
@@ -101,28 +93,35 @@
       (let [req*
             (loop [mws mw
                    req (assoc req :route-params params)]
-              (if (empty? mws)
-                req
-                ;; TODO add error if middleware not found
-                (if-let [mw-cfg (zen/get-symbol ztx (first mws))]
+              (let [mw-cfg (zen/get-symbol ztx (first mws))
+                    {:keys [dir] :as eng-cfg} (zen/get-symbol ztx (:engine mw-cfg))]
+                (cond
+                  (empty? mws) req
+              ;; TODO add error if middleware not found?
+                  (nil? mw-cfg) (recur (rest mws) req)
+                  (or (nil? dir) (contains? dir :in))
                   (let [patch (middleware-in ztx mw-cfg req)]
-                    (if-let [resp (and (map? patch) (:zen.http/response patch))]
-                      ;; TODO add deep-merge
+                    (if-let [resp (::response patch)]
                       resp
                       (recur (rest mws)
                              (if (map? patch)
-                               (merge req patch)
+                               (utils/deep-merge req patch)
                                req))))
-                  (recur (rest mws) req))))
+                  :else (recur (rest mws) req))))
+
             resp
             (if (:status req*)
               req*
               (zen/op-call ztx op req* session))]
+
         (reduce (fn [resp* mw-symbol]
-                  (if-let [mw-cfg (zen/get-symbol ztx mw-symbol)]
-                    ;; TODO add deep merge
-                    (merge resp* (middleware-out ztx mw-cfg req* resp*))
-                    req*))
+                  (let [mw-cfg (zen/get-symbol ztx mw-symbol)
+                        {:keys [dir] :as eng-cfg} (zen/get-symbol ztx (:engine mw-cfg))]
+                    (cond
+                      (nil? mw-cfg) resp*
+                      (or (nil? dir) (contains? dir :out))
+                      (utils/deep-merge resp* (middleware-out ztx mw-cfg req* resp*))
+                      :else resp*)))
                 resp
                 mw))
       {:status 404 :body "route not found"})))

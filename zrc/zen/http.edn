@@ -18,8 +18,10 @@
   :values {:type zen/any}}
 
  middleware-engine
- {:zen/tags #{zen/tag}
-  :zen/desc "API engine"}
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map
+  :keys {:dir {:type zen/set
+               :every {:enum [{:value :in} {:value :out}]}}}}
 
  middleware
  {:zen/tags #{zen/tag zen/schema}
@@ -175,15 +177,18 @@
  basic-auth
  {:zen/tags #{middleware-engine zen/schema}
   :type zen/map
+  :dir #{:in}
   :keys {:user {:type zen/string}
          :password {:type zen/string}}}
 
  cors
  {:zen/tags #{middleware-engine zen/schema}
+  :dir #{:out}
   :type zen/map}
 
  parse-params
  {:zen/tags #{middleware-engine zen/schema}
+  :dir #{:in}
   :type zen/map}
 
  cookies

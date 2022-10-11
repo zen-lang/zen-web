@@ -15,7 +15,7 @@
   (byte-transform #(.decode (Base64/getDecoder) ^bytes %) string))
 
 (defn basic-error [{:keys [request-method]}]
-  {:zen.http/response
+  {:zen.http.core/response
    (cond-> {:status 401 :headers {"Content-Type" "text/plain"}}
      (not= request-method :head) (assoc :body "access denied"))})
 

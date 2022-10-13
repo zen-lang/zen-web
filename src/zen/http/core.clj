@@ -1,12 +1,15 @@
 (ns zen.http.core
-  (:require [zen.core :as zen]
-            [ring.util.codec :as codec]
-            [org.httpkit.server :as http-kit]
-            [clojure.string :as str]
-            [zen.http.utils :as utils]
-            [zen.http.httpkit]
-            [zen.http.routemap :as rm]
-            [zen.http.middlewares :as mw]))
+  (:require
+   [ring.util.response :as mw-util]
+   [clojure.java.io :as io]
+   [zen.core :as zen]
+   [ring.util.codec :as codec]
+   [org.httpkit.server :as http-kit]
+   [clojure.string :as str]
+   [zen.http.utils :as utils]
+   [zen.http.httpkit]
+   [zen.http.routemap :as rm]
+   [zen.http.middlewares :as mw]))
 
 (defmulti middleware-in
   (fn [ztx cfg request]
@@ -167,4 +170,13 @@
     (keyword? (:select config))
     (assoc :body (str (get req (:select config))))))
 
-
+(defmethod zen/op 'zen.http/serve-static
+  [ztx {:keys [serve]} {uri :uri :as req} & opts]
+  (when-let [f (or (io/resource (str/replace uri #"^/" ""))
+                   (->> serve
+                        (map (fn [path]
+                               (let [f (io/file (str path uri))]
+                                 (when (.exists f) f))))
+                        (filter identity)
+                        (first)))]
+    (mw-util/file-response (.getPath f))))

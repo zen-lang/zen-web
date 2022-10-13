@@ -30,6 +30,16 @@
   :schema-key {:key :engine}
   :keys {:engine {:type zen/symbol :tags #{middleware-engine}}}}
 
+ op-engine
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map}
+
+ op
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map
+  :schema-key {:key :engine}
+  :keys {:engine {:type zen/symbol :tags #{op-engine}}}}
+
  debug-middleware
  {:zen/tags #{middleware}
   :zen/desc "prints request into stdout"}
@@ -46,18 +56,6 @@
  http-engine
  {:zen/tags #{zen/tag}
   :zen/desc "HTTP Server engine"}
-
- op-engine
- {:zen/tags #{zen/tag}}
-
- op
- {:zen/tags #{zen/tag}}
-
- response-op
- {:zen/tags #{zen/tag op-engine zen/schema}
-  :type zen/map
-  :keys {:response {:type zen/map
-                    :values {:type zen/any}}}}
 
  rpc
  {:zen/tags #{op}}
@@ -193,4 +191,16 @@
 
  cookies
  {:zen/tags #{middleware-engine zen/schema}
-  :type zen/map}}
+  :type zen/map}
+
+ response-op
+ {:zen/tags #{op-engine zen/schema}
+  :type zen/map
+  :keys {:response {:type zen/map
+                    :values {:type zen/any}}
+         :select {:type zen/keyword}}}
+
+ serve-static
+ {:zen/tags #{op-engine zen/schema}
+  :type zen/map
+  :keys {:serve {:type zen/vector :every {:type zen/string}}}}}

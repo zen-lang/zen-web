@@ -1,10 +1,13 @@
 (ns zen.http.middlewares
-  (:require [clojure.string :as str]
-            [ring.util.parsing :refer [re-token]]
-            [clojure.walk :as walk]
-            [ring.util.codec :as codec]
-            [ring.middleware.cookies :as cookies])
+  (:require
+   [clojure.string :as str]
+   [ring.util.parsing :refer [re-token]]
+   [clojure.walk :as walk]
+   [ring.util.codec :as codec]
+   [ring.middleware.cookies :as cookies])
   (:import java.util.Base64))
+
+;; TODO impl middlewares, get rid of ring.* dependencies
 
 (defn byte-transform [direction-fn string]
   (try
@@ -94,3 +97,5 @@
                                (write-attr-map (dissoc v :value)))
                         (codec/form-encode {k v})))))]
       (assoc-in resp [:headers "Set-Cookie"] (vec http-cookies)))))
+
+

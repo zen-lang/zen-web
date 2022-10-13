@@ -1,4 +1,4 @@
-(ns zen.http.middleware-test
+(ns zen.http.middlewares-test
   (:require
    [zen.core :as zen]
    [zen.http.core :as web]
@@ -112,7 +112,7 @@
 
 (zen/load-ns ztx config)
 
-(deftest middleware-config-test
+(deftest middleware-config
   (zen/load-ns ztx config)
 
   (is (empty? (zen/errors ztx)))
@@ -120,7 +120,7 @@
   (is (= {:status 200, :body "Hello"}
          (web/handle ztx 'myweb/api {:uri "/" :request-method :get}))))
 
-(deftest cors-middleware-test
+(deftest cors-middleware
   (testing "options always returns cors headers"
     (matcho/match
      (web/handle ztx 'myweb/api {:uri "/" :request-method :options})
@@ -144,7 +144,7 @@
         "Access-Control-Expose-Headers"
         "Location, Content-Location, Category, Content-Type, X-total-count"}})))
 
-(deftest basic-auth-test
+(deftest basic-auth
   (is (= 401 (:status (web/handle ztx 'myweb/api {:uri "/admin" :request-method :get}))))
 
   (is (= {:status 200, :body "Hello, admin"}
@@ -152,7 +152,7 @@
                                      :request-method :get
                                      :headers {"authorization" "Basic am9objoxMjM="}}))))
 
-(deftest cookies-test
+(deftest cookies
 
   (defmethod zen/op 'myweb/cookie-set-engine
     [ztx config req & opts]
@@ -174,7 +174,7 @@
     :headers {"Set-Cookie" ["token=justvalue;Max-Age=1000;Path=/" "another-token=another-value"]}}
    (web/handle ztx 'myweb/api {:uri "/cookies-mw/get-cookies" :request-method :get})))
 
-(deftest querystring-test
+(deftest query-string
   (matcho/match
    (web/handle ztx 'myweb/api {:uri "/params-mw"
                                :request-method :get

@@ -26,9 +26,15 @@
      :user "john"
      :password "123"}
 
+    serve-static
+    {:zen/tags #{zen/op zen.http/op}
+     :engine zen.http/serve-static
+     :serve ["/test/zen/http/__static"]}
+
     api
     {:zen/tags #{zen.http/api}
      :engine zen.http/routemap
+     "static" {[:file-name] {:GET serve-static}}
      :GET index-op
      "test-mw" {:mw [basic-auth]
                 :GET index-op}
@@ -84,3 +90,10 @@
      (web/handle ztx 'myweb/api {:uri "/method-override"
                                  :request-method :post
                                  :headers {"x-http-method-override" "PUT"}}))))
+
+#_(deftest serve-static
+
+  (web/*routes ztx 'myweb/api)
+
+  (web/handle ztx 'myweb/api {:uri "/static/anothr/file.txt"
+                              :request-method :get}))

@@ -172,16 +172,18 @@
 
 (defmethod zen/op 'zen.http/serve-static
   [ztx {:keys [serve]} {uri :uri rp :route-params :as req} & opts]
-  (if-let [f (->> serve
-                  (map (fn [p]
-                         (str (System/getProperty "user.dir") p)))
-                  (map (fn [path]
-                         (let [file-path (str path "/" (str/join "/" (:* rp)))
-                               f (io/file file-path)]
-                           (when (.exists f) f))))
-                  (filter identity)
-                  (first))]
+  (let [file-path (str/join "/" (:* rp))]
+    (if-let [f (or (io/resource file-path)
+                   (->> serve
+                        (map (fn [p]
+                               (str (System/getProperty "user.dir") p)))
+                        (map (fn [path]
+                               (let [file-path* (str path "/" file-path)
+                                     f (io/file file-path*)]
+                                 (when (.exists f) f))))
+                        (filter identity)
+                        (first)))]
     ;; TODO get rid of mw util dep
-    (mw-util/file-response (.getPath f))
-    {:status 404
-     :body "file not found"}))
+      (mw-util/file-response (.getPath f))
+      {:status 404
+       :body "file not found"})))

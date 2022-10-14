@@ -34,7 +34,7 @@
     api
     {:zen/tags #{zen.http/api}
      :engine zen.http/routemap
-     "static" {:* {:GET serve-static}}
+     "files" {:* {:GET serve-static}}
      :GET index-op
      "test-mw" {:mw [basic-auth]
                 :GET index-op}
@@ -92,13 +92,24 @@
                                  :headers {"x-http-method-override" "PUT"}}))))
 
 (deftest serve-static
-  (matcho/assert
-   {:status 200
-    :body #(instance? java.io.File %)}
-   (web/handle ztx 'myweb/api {:uri "/static/content.txt" :request-method :get}))
+
+  ;; test file location
+  ;; test/zen/http/static/content.txt
+
+  (testing "file-path is resolved from :serve dir"
+    (matcho/assert
+     {:status 200
+      :body #(instance? java.io.File %)}
+     (web/handle ztx 'myweb/api {:uri "/files/content.txt" :request-method :get})))
+
+  (testing "file-path is resolved from classpath"
+    (matcho/assert
+     {:status 200
+      :body #(instance? java.io.File %)}
+     (web/handle ztx 'myweb/api {:uri "/files/zen/http/static/content.txt" :request-method :get})))
 
   (matcho/assert
    {:status 404
     :body "file not found"}
-   (web/handle ztx 'myweb/api {:uri "/static/not-found.jpg" :request-method :get})))
+   (web/handle ztx 'myweb/api {:uri "/files/not-found.jpg" :request-method :get})))
 

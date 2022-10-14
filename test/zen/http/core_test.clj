@@ -29,12 +29,12 @@
     serve-static
     {:zen/tags #{zen/op zen.http/op}
      :engine zen.http/serve-static
-     :serve ["/test/zen/http/__static"]}
+     :serve ["/test/zen/http/static"]}
 
     api
     {:zen/tags #{zen.http/api}
      :engine zen.http/routemap
-     "static" {[:file-name] {:GET serve-static}}
+     "static" {:* {:GET serve-static}}
      :GET index-op
      "test-mw" {:mw [basic-auth]
                 :GET index-op}
@@ -91,9 +91,14 @@
                                  :request-method :post
                                  :headers {"x-http-method-override" "PUT"}}))))
 
-#_(deftest serve-static
+(deftest serve-static
+  (matcho/assert
+   {:status 200
+    :body #(instance? java.io.File %)}
+   (web/handle ztx 'myweb/api {:uri "/static/content.txt" :request-method :get}))
 
-  (web/*routes ztx 'myweb/api)
+  (matcho/assert
+   {:status 404
+    :body "file not found"}
+   (web/handle ztx 'myweb/api {:uri "/static/not-found.jpg" :request-method :get})))
 
-  (web/handle ztx 'myweb/api {:uri "/static/anothr/file.txt"
-                              :request-method :get}))

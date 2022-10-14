@@ -52,15 +52,15 @@
         ;; try params branches [:param]
         (if-let [res (->> (get-params node)
                           (map (fn [[[k] next-node]]
-                                 (match ztx next-node rpath (->
-                                                             ctx
-                                                             (assoc-in [:params k] x)
-                                                             (update :path (fn [p] (conj (or p []) k)))
-                                                             (update :resolution-path (fn [p] (conj (or p []) [k])))))))
+                                 (match ztx next-node rpath
+                                        (-> ctx
+                                            (assoc-in [:params k] x)
+                                            (update :path (fn [p] (conj (or p []) k)))
+                                            (update :resolution-path (fn [p] (conj (or p []) [k])))))))
                           (filter identity)
                           (first))]
           res
-          (when-let [apis (:apis node)] ;; try apis
+          (if-let [apis (:apis node)]
             (->> apis
                  (map (fn [api-name]
                         (if-let [api (zen/get-symbol ztx api-name)]
@@ -70,7 +70,12 @@
                             (zen/error ztx 'zen.http/api-not-found {:api api-name})
                             nil))))
                  (filter identity)
-                 (first))))))))
+                 (first))
+            (when (:* node)
+              (match ztx (:* node) (take-last 1 path) (-> ctx
+                                                          (assoc-in [:params :*] (vec (butlast path)))
+                                                          (update :path (fn [p] (into p (butlast path))))
+                                                          (update :resolution-path (fn [p] (conj p :*))))))))))))
 
 (defn resolve-route
   [ztx cfg path ctx]

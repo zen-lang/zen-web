@@ -2,9 +2,8 @@
   (:require [zen.core :as zen]
             [zen.http.core :as web]
             [zen.http.routemap :as routemap]
-            [clojure.test :as t]
+            [clojure.test :refer [deftest is testing]]
             [matcho.core :as matcho]))
-
 
 (defmethod web/resolve-route
   'myweb/custom-api
@@ -20,83 +19,90 @@
        (update :path into [:* :GET])
        (update :by conj (:zen/name cfg)))])
 
-(t/deftest zen.http-routemap-test
+(def ztx (zen/new-context {}))
 
-  (def ztx (zen/new-context {}))
+(zen/load-ns
+ ztx
+ '{ns myweb
+   import #{zen.http}
 
-  (zen/load-ns
-   ztx
-   '{ns myweb
-     import #{zen.http}
+   index-op
+   {:zen/tags #{zen/op zen.http/op}
+    :engine zen.http/response-op
+    :response {:status 200
+               :body {:message "Hello!"}}}
 
-     index-op
-     {:zen/tags #{zen/op zen.http/op}
-      :engine zen.http/response-op
-      :response {:status 200
-                 :body {:message "Hello!"}}}
+   well-known-op
+   {:zen/tags #{zen/op zen.http/op}
+    :engine zen.http/response-op
+    :response {:status 200
+               :body {:message "WK"}}}
 
-     well-known-op
-     {:zen/tags #{zen/op zen.http/op}
-      :engine zen.http/response-op
-      :response {:status 200
-                 :body {:message "WK"}}}
+   get-pt-op
+   {:zen/tags #{zen/op zen.http/op}
+    :engine zen.http/response-op
+    :response {:status 200
+               :body {:message "PT"}}}
 
-     get-pt-op
-     {:zen/tags #{zen/op zen.http/op}
-      :engine zen.http/response-op
-      :response {:status 200
-                 :body {:message "PT"}}}
+   get-users-op
+   {:zen/tags #{zen/op zen.http/op}
+    :engine zen.http/response-op
+    :response {:status 200
+               :body {:message "Users"}}}
 
-     get-users-op
-     {:zen/tags #{zen/op zen.http/op}
-      :engine zen.http/response-op
-      :response {:status 200
-                 :body {:message "Users"}}}
+   get-user-op
+   {:zen/tags #{zen/op zen.http/op}
+    :engine zen.http/response-op
+    :response {:status 200
+               :body {:message "User"}}}
 
-     get-user-op
-     {:zen/tags #{zen/op zen.http/op}
-      :engine zen.http/response-op
-      :response {:status 200
-                 :body {:message "User"}}}
+   admin-api
+   {:zen/tags #{zen.http/api}
+    :engine zen.http/routemap
+    :mw [zen.http/debug-middleware]
+    "users" {:GET get-users-op
+             [:id] {:GET get-user-op}}}
 
-     admin-api
-     {:zen/tags #{zen.http/api}
-      :engine zen.http/routemap
-      :mw [zen.http/debug-middleware]
-      "users" {:GET get-users-op
-               [:id] {:GET get-user-op}}}
+   custom-op
+   {:zen/tags #{zen/op zen.http/op}
+    :engine zen.http/response-op
+    :response {:status 200
+               :body {:message "custom"}}}
 
-     custom-op
-     {:zen/tags #{zen/op zen.http/op}
-      :engine zen.http/response-op
-      :response {:status 200
-                 :body {:message "custom"}}}
+   custom-api
+   {:zen/tags #{zen.http/api}
+    :zen/desc "just custom api - match all routes with custom-op"}
 
-     custom-api
-     {:zen/tags #{zen.http/api}
-      :zen/desc "just custom api - match all routes with custom-op"}
+   tenant-pt-op
+   {:zen/tags #{zen/op zen.http/op}
+    :engine zen.http/response-op
+    :response {:status 200
+               :body {:message "tenant-pt"}}}
 
-     tenant-pt-op
-     {:zen/tags #{zen/op zen.http/op}
-      :engine zen.http/response-op
-      :response {:status 200
-                 :body {:message "tenant-pt"}}}
+   static-op
+   {:zen/tags #{zen/op zen.http/op}
+    :engine zen.http/response-op
+    :response {:status 200}}
 
-     route
-     {:zen/tags #{zen.http/api}
-      :engine zen.http/routemap
-      :apis [zen.http/rpc-api]
-      :mw []
-      :GET index-op
-      ".well-known" {:GET well-known-op}
-      "Patient" {[:id] {:GET get-pt-op}}
-      "custom" {:apis [custom-api]}
-      "admin" {:apis [admin-api]}
-      [:tenant] {"patients" {:GET tenant-pt-op}}}})
+   route
+   {:zen/tags #{zen.http/api}
+    :engine zen.http/routemap
+    :apis [zen.http/rpc-api]
+    :mw []
+    :GET index-op
+    "static" {:* {:mw [zen.http/debug-middleware]
+                  :GET static-op}}
+    ".well-known" {:GET well-known-op}
+    "Patient" {[:id] {:GET get-pt-op}}
+    "custom" {:apis [custom-api]}
+    "admin" {:apis [admin-api]}
+    [:tenant] {"patients" {:GET tenant-pt-op}}}})
 
-  (t/is (empty? (zen/errors ztx)))
+(deftest routes-matching
 
-  (t/is (nil? (web/*resolve-route ztx 'myweb/route {:path ["undefined" :GET]})))
+  (is (empty? (zen/errors ztx)))
+
+  (is (nil? (web/*resolve-route ztx 'myweb/route {:path ["undefined" :GET]})))
 
   ;; test root path
   (matcho/match
@@ -127,7 +133,6 @@
      :resolution-path ['myweb/route "custom" 'myweb/custom-api "ups" :GET]})
 
   ;; test two route maps
-
   (matcho/match
    (web/*resolve-route ztx 'myweb/route  ["admin" "users" :GET])
     {:path ["admin" "users" :GET],
@@ -144,45 +149,64 @@
      :op 'myweb/get-user-op})
 
   ;; test root api
-
   (matcho/match
    (web/*resolve-route ztx 'myweb/route  [:POST])
     {:path [:POST],
      :resolution-path ['myweb/route 'zen.http/rpc-api :POST],
      :op 'zen.http/rpc})
 
-  (zen/get-symbol ztx 'myweb/route)
-  (zen/engine-or-name (zen/get-symbol ztx 'myweb/route))
+  ;; test wildcard matching
+  (matcho/match
+   (web/*resolve-route ztx 'myweb/route ["static" "file.txt" :GET])
+    {:path ["static" "file.txt" :GET],
+     :params {:* ["file.txt"]}
+     :middlewares ['zen.http/debug-middleware],
+     :resolution-path ['myweb/route "static" :* :GET],
+     :op 'myweb/static-op})
 
-  (t/testing "routes"
-    (matcho/match
-     (web/*routes ztx 'myweb/route)
-      [{:path [".well-known" :GET],
-        :by ['myweb/route ".well-known" :GET],
-        :op 'myweb/well-known-op}
-       {:path [:GET],
-        :by ['myweb/route :GET],
-        :op 'myweb/index-op}
-       {:path [:POST],
-        :by ['myweb/route 'zen.http/rpc-api :POST],
-        :op 'zen.http/rpc}
-       {:path [:tenant "patients" :GET],
-        :params #{:tenant},
-        :by ['myweb/route [:tenant] "patients" :GET],
-        :op 'myweb/tenant-pt-op}
-       {:path ["Patient" :id :GET],
-        :params #{:id},
-        :by ['myweb/route "Patient" [:id] :GET],
-        :op 'myweb/get-pt-op}
-       {:path ["admin" "users" :GET],
-        :middlewares ['zen.http/debug-middleware],
-        :by ['myweb/route "admin" 'myweb/admin-api "users" :GET],
-        :op 'myweb/get-users-op}
-       {:path ["admin" "users" :id :GET],
-        :middlewares ['zen.http/debug-middleware],
-        :params #{:id},
-        :by ['myweb/route "admin" 'myweb/admin-api "users" [:id] :GET],
-        :op 'myweb/get-user-op}
-       {:path ["custom" :* :GET],
-        :by ['myweb/route "custom" 'myweb/custom-api],
-        :op 'myweb/custom-op}])))
+  (matcho/match
+   (web/*resolve-route ztx 'myweb/route ["static" "content" "jpg" "image.jpg" :GET])
+    {:path ["static" "content" "jpg" "image.jpg" :GET],
+     :params {:* ["content" "jpg" "image.jpg"]}
+     :middlewares ['zen.http/debug-middleware],
+     :resolution-path ['myweb/route "static" :* :GET],
+     :op 'myweb/static-op})
+
+  (is (nil? (web/*resolve-route ztx 'myweb/route ["static"])))
+
+  (is (nil? (web/*resolve-route ztx 'myweb/route ["static" "file.txt" :POST]))))
+
+(deftest routes-list
+  (matcho/match
+   (web/*routes ztx 'myweb/route)
+    [{:path [".well-known" :GET],
+      :by ['myweb/route ".well-known" :GET],
+      :op 'myweb/well-known-op}
+     {:path [:GET],
+      :by ['myweb/route :GET],
+      :op 'myweb/index-op}
+     {:path [:POST],
+      :by ['myweb/route 'zen.http/rpc-api :POST],
+      :op 'zen.http/rpc}
+     {:path [:tenant "patients" :GET],
+      :params #{:tenant},
+      :by ['myweb/route [:tenant] "patients" :GET],
+      :op 'myweb/tenant-pt-op}
+     {:path ["Patient" :id :GET],
+      :params #{:id},
+      :by ['myweb/route "Patient" [:id] :GET],
+      :op 'myweb/get-pt-op}
+     {:path ["admin" "users" :GET],
+      :middlewares ['zen.http/debug-middleware],
+      :by ['myweb/route "admin" 'myweb/admin-api "users" :GET],
+      :op 'myweb/get-users-op}
+     {:path ["admin" "users" :id :GET],
+      :middlewares ['zen.http/debug-middleware],
+      :params #{:id},
+      :by ['myweb/route "admin" 'myweb/admin-api "users" [:id] :GET],
+      :op 'myweb/get-user-op}
+     {:path ["custom" :* :GET],
+      :by ['myweb/route "custom" 'myweb/custom-api],
+      :op 'myweb/custom-op}]))
+
+

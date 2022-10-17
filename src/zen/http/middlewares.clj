@@ -1,5 +1,6 @@
 (ns zen.http.middlewares
   (:require
+   [zen.http.utils :as utils]
    [clojure.string :as str]
    [ring.util.parsing :refer [re-token]]
    [clojure.walk :as walk]
@@ -39,14 +40,32 @@
              "Access-Control-Allow-Credentials" "true"
              "Access-Control-Expose-Headers" "Location, Content-Location, Category, Content-Type, X-total-count"})))
 
-(defn parse-params [ztx cfg {qs :query-string}]
-  (when qs
-    (let [parsed (walk/keywordize-keys (ring.util.codec/form-decode qs))
-          params (if (string? parsed)
-                   {(keyword parsed) nil}
-                   parsed)]
-      {:params params
-       :query-params params})))
+(defn parse-params* [s]
+  (let [parsed
+        (-> s
+            ring.util.codec/form-decode
+            walk/keywordize-keys)]
+    (if (string? parsed)
+      {(keyword parsed) nil}
+      parsed)))
+
+(defn parse-params [ztx cfg {rm :request-method hs :headers qs :query-string body :body :as req}]
+  ;; TODO support non UTF-8 encodings
+  (let [content-type (utils/content-type hs)
+
+        form-params
+        (when (and content-type
+                   (str/starts-with? content-type "application/x-www-form-urlencoded")
+                   body)
+          (parse-params* (slurp body)))
+
+        query-params
+        (when qs
+          (parse-params* qs))]
+
+    {:params (merge form-params query-params)
+     :query-params query-params
+     :form-params form-params}))
 
 (def re-cookie-octet #"[!#$%&'()*+\-./0-9:<=>?@A-Z\[\]\^_`a-z\{\|\}~]")
 
@@ -97,5 +116,3 @@
                                (write-attr-map (dissoc v :value)))
                         (codec/form-encode {k v})))))]
       (assoc-in resp [:headers "Set-Cookie"] (vec http-cookies)))))
-
-

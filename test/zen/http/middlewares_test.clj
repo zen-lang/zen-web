@@ -1,5 +1,7 @@
 (ns zen.http.middlewares-test
   (:require
+   [ring.util.codec :as codec :refer [form-encode]]
+   [clojure.java.io :as io]
    [zen.core :as zen]
    [zen.http.core :as web]
    [matcho.core :as matcho]
@@ -24,8 +26,8 @@
     form-params
     {:zen/tags #{zen/op zen.http/op}
      :engine zen.http/response-op
-     :response {:status 200
-                :body "form params parsed"}}
+     :select :form-params
+     :response {:status 200}}
 
     query-params
     {:zen/tags #{zen/op zen.http/op}
@@ -113,6 +115,10 @@
 (zen/load-ns ztx config)
 
 (deftest middleware-config
+  (comment
+    #_(zen/start-system ztx 'myweb/system)
+    #_(zen/stop-system ztx))
+
   (zen/load-ns ztx config)
 
   (is (empty? (zen/errors ztx)))
@@ -179,4 +185,20 @@
    (web/handle ztx 'myweb/api {:uri "/params-mw"
                                :request-method :get
                                :query-string "msg=hello+love"})
-    {:status 200 :body "{:msg \"hello love\"}"}))
+   {:status 200 :body "{:msg \"hello love\"}"})
+
+  (matcho/match
+   (web/handle ztx 'myweb/api {:uri "/params-mw"
+                               :request-method :get
+                               :query-string "msg"})
+    {:status 200 :body "{:msg nil}"})
+
+  (matcho/match
+   (web/handle ztx 'myweb/api {:uri "/params-mw"
+                               :request-method :post
+                               :headers {"content-type" "application/x-www-form-urlencoded"}
+                               :body (-> (str "value1=" (form-encode "a string")
+                                              "&value2=" (form-encode " yet another string %"))
+                                         .getBytes
+                                         (io/input-stream))})
+   {:status 200 :body "{:value1 \"a string\", :value2 \" yet another string %\"}"}))

@@ -151,12 +151,26 @@
         "Location, Content-Location, Category, Content-Type, X-total-count"}})))
 
 (deftest basic-auth
-  (is (= 401 (:status (web/handle ztx 'myweb/api {:uri "/admin" :request-method :get}))))
+
+  (matcho/assert
+   {:status 401
+    :headers {"Content-Type" "text/plain"
+              "WWW-Authenticate" "Basic realm=restricted area"}
+    :body "access denied"}
+   (web/handle ztx 'myweb/api {:uri "/admin" :request-method :get}))
 
   (is (= {:status 200, :body "Hello, admin"}
          (web/handle ztx 'myweb/api {:uri "/admin"
                                      :request-method :get
-                                     :headers {"authorization" "Basic am9objoxMjM="}}))))
+                                     :headers {"authorization" "Basic am9objoxMjM="}})))
+
+  #_(testing "when req method is head no body is returned"
+    (matcho/assert
+     {:status 401
+      :headers {"Content-Type" "text/plain"
+                "WWW-Authenticate" "Basic realm=restricted area"}
+      :body nil?}
+     (web/handle ztx 'myweb/api {:uri "/admin" :request-method :head}))))
 
 (deftest cookies
 

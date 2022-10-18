@@ -20,7 +20,9 @@
 
 (defn basic-error [{:keys [request-method]}]
   {:zen.http.core/response
-   (cond-> {:status 401 :headers {"Content-Type" "text/plain"}}
+   (cond-> {:status 401
+            :headers {"Content-Type" "text/plain"
+                      "WWW-Authenticate" "Basic realm=restricted area"}}
      (not= request-method :head) (assoc :body "access denied"))})
 
 (defn verify-basic-auth

@@ -34,52 +34,71 @@
   [x]
   (instance? java.util.regex.Pattern x))
 
-(defn match [ztx
-             {node-mws :mw :as node}
-             [x & rpath :as path]
-             {params :params mws :middlewares :as ctx}]
-  (if (empty? path)
-    (when (symbol? node) ;; match!
-      (assoc ctx :op node))
-    ;; try exact branch
-    (let [ctx (cond-> ctx
-                node-mws (update :middlewares (fn [x] (into (or x []) node-mws))))]
-      (if-let [res (when-let [next-node (get node x)]
-                     (match ztx next-node rpath (-> ctx
-                                                    (update :path (fn [p] (conj (or p []) x)))
-                                                    (update :resolution-path (fn [p] (conj (or p []) x))))))]
-        res
-        ;; try params branches [:param]
-        (if-let [res (->> (get-params node)
-                          (map (fn [[[k] next-node]]
-                                 (match ztx next-node rpath
-                                        (-> ctx
-                                            (assoc-in [:params k] x)
-                                            (update :path (fn [p] (conj (or p []) k)))
-                                            (update :resolution-path (fn [p] (conj (or p []) [k])))))))
-                          (filter identity)
-                          (first))]
-          res
-          (if-let [apis (:apis node)]
-            (->> apis
-                 (map (fn [api-name]
-                        (if-let [api (zen/get-symbol ztx api-name)]
-                          ;; a bit of black magic to avoid transitive dep
-                          ((ns-resolve (find-ns 'zen.http.core) 'resolve-route) ztx api path ctx)
-                          (do
-                            (zen/error ztx 'zen.http/api-not-found {:api api-name})
-                            nil))))
-                 (filter identity)
-                 (first))
-            (when (:* node)
-              (match ztx (:* node) (take-last 1 path) (-> ctx
-                                                          (assoc-in [:params :*] (vec (butlast path)))
-                                                          (update :path (fn [p] (into p (butlast path))))
-                                                          (update :resolution-path (fn [p] (conj p :*))))))))))))
+(defn *match [ztx
+              {node-mws :mw :as node}
+              [x & rpath :as path]
+              {params :params mws :middlewares :as ctx}]
+  (let [ctx (cond-> ctx
+               ;; TODO refactor this
+              node-mws (update :middlewares (fn [x] (into (or x []) node-mws))))
+        next-node (get node x)]
+    (cond (and (empty? path)
+               (symbol? node))
+          (assoc ctx :op node)
+
+          next-node
+          (*match ztx next-node rpath
+                  (-> ctx
+                   ;; TODO refactor conj
+                      (update :path (fn [p] (conj (or p []) x)))
+                      (update :resolution-path (fn [p] (conj (or p []) x)))))
+
+          :else
+          (let [params-match
+                (->> (get-params node)
+                     (map (fn [[[k] next-node]]
+                            (*match ztx next-node rpath
+                                    (-> ctx
+                                        (assoc-in [:params k] x)
+                                        (update :path (fn [p] (conj (or p []) k)))
+                                        (update :resolution-path (fn [p] (conj (or p []) [k])))))))
+                     (filter identity)
+                     (first))
+
+                apis-match
+                (when-let [apis (:apis node)]
+                  (->> apis
+                       (map (fn [api-name]
+                              (if-let [api (zen/get-symbol ztx api-name)]
+                                ;; a bit of black magic to avoid transitive dep
+                                ((ns-resolve (find-ns 'zen.http.core) 'resolve-route) ztx api path ctx)
+                                (do
+                                  (zen/error ztx 'zen.http/api-not-found {:api api-name})
+                                  nil))))
+                       (filter identity)
+                       (first)))
+
+                cur-idx (count (:resolution-path ctx))]
+
+            (cond (string? (get (:resolution-path apis-match) (+ 1 cur-idx)))
+                  apis-match
+
+                  (and (nil? params-match) apis-match)
+                  apis-match
+
+                  (not (nil? params-match))
+                  params-match
+
+                  (:* node)
+                  (*match ztx (:* node) (take-last 1 path)
+                          (-> ctx
+                              (assoc-in [:params :*] (vec (butlast path)))
+                              (update :path (fn [p] (into p (butlast path))))
+                              (update :resolution-path (fn [p] (conj p :*))))))))))
 
 (defn resolve-route
   [ztx cfg path ctx]
-  (match ztx cfg path (-> ctx (update :resolution-path (fn [p] (conj (or p []) (:zen/name cfg)))))))
+  (*match ztx cfg path (-> ctx (update :resolution-path (fn [p] (conj (or p []) (:zen/name cfg)))))))
 
 (defn routes [ztx cfg ctx]
   (let [ctx (cond-> ctx (:mw cfg)

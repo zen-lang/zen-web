@@ -79,7 +79,7 @@
     :response {:status 200
                :body {:message "tenant-pt"}}}
 
-   static-op
+   default-op
    {:zen/tags #{zen/op zen.http/op}
     :engine zen.http/response-op
     :response {:status 200}}
@@ -91,7 +91,7 @@
     :mw []
     :GET index-op
     "static" {:* {:mw [zen.http/debug-middleware]
-                  :GET static-op}}
+                  :GET default-op}}
     ".well-known" {:GET well-known-op}
     "Patient" {[:id] {:GET get-pt-op}}
     "custom" {:apis [custom-api]}
@@ -162,7 +162,7 @@
      :params {:* ["file.txt"]}
      :middlewares ['zen.http/debug-middleware],
      :resolution-path ['myweb/route "static" :* :GET],
-     :op 'myweb/static-op})
+     :op 'myweb/default-op})
 
   (matcho/match
    (web/*resolve-route ztx 'myweb/route ["static" "content" "jpg" "image.jpg" :GET])
@@ -170,7 +170,7 @@
      :params {:* ["content" "jpg" "image.jpg"]}
      :middlewares ['zen.http/debug-middleware],
      :resolution-path ['myweb/route "static" :* :GET],
-     :op 'myweb/static-op})
+     :op 'myweb/default-op})
 
   (is (nil? (web/*resolve-route ztx 'myweb/route ["static"])))
 
@@ -209,4 +209,55 @@
       :by ['myweb/route "custom" 'myweb/custom-api],
       :op 'myweb/custom-op}]))
 
+(deftest matching-order
 
+  (zen/load-ns
+   ztx
+   '{ns matching-test
+     import #{zen.http}
+
+     default-op
+     {:zen/tags #{zen/op zen.http/op}
+      :engine zen.http/response-op
+      :response {:status 200}}
+
+     myapi
+     {:zen/tags #{zen.http/api}
+      :engine zen.http/routemap
+      [:oth-param] {:GET default-op}
+      "exact2" {:GET default-op}}
+
+     route
+     {:zen/tags #{zen.http/api}
+      :engine zen.http/routemap
+      :apis [myapi]
+      "exact" {:GET default-op}
+      [:myparam] {:GET default-op}}})
+
+  (is (empty? (zen/errors ztx)))
+
+  ;; exact match always comes first
+  (matcho/match
+   {:path ["exact2" :GET],
+    :params {},
+    :middlewares [],
+    :resolution-path ['matching-test/route 'matching-test/myapi "exact2" :GET],
+    :op 'matching-test/default-op}
+    (web/*resolve-route ztx 'matching-test/route ["exact2" :GET]))
+
+  (matcho/match
+   {:path ["exact" :GET],
+    :params {},
+    :middlewares [],
+    :resolution-path ['matching-test/route "exact" :GET],
+    :op 'matching-test/default-op}
+   (web/*resolve-route ztx 'matching-test/route ["exact" :GET]))
+
+  ;; matches :myparam from root before :oth-param from :apis
+  (matcho/match
+   {:path [:myparam :GET],
+    :params {:myparam "a-param"},
+    :middlewares [],
+    :resolution-path ['matching-test/route [:myparam] :GET],
+    :op 'matching-test/default-op}
+   (web/*resolve-route ztx 'matching-test/route ["a-param" :GET])))

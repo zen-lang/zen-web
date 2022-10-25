@@ -43,15 +43,15 @@
   (fn [_ztx cfg _path {_params :params _mws :middlewares _pth :path}]
     (zen/engine-or-name cfg)))
 
+(defmethod resolve-route 'zen.http/routemap
+  [ztx cfg path ctx]
+  (rm/resolve-route ztx cfg path ctx))
+
 (defmethod resolve-route
   :default
   [ztx cfg _path ctx]
   (zen/error ztx 'zen.http/no-resolve-route-method {:method (zen/engine-or-name cfg) :path (:path ctx)})
   nil)
-
-(defmethod resolve-route 'zen.http/routemap
-  [ztx cfg path ctx]
-  (rm/resolve-route ztx cfg path ctx))
 
 (def initial-ctx {:path [] :params {} :middlewares []})
 

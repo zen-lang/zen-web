@@ -1,4 +1,5 @@
-{ns zen.http
+{:ns zen.http
+ :import #{zen.http.engines}
 
  resolve-route
  {:zen/tags #{zen/op}
@@ -17,18 +18,16 @@
   :type zen/map
   :values {:type zen/any}}
 
- middleware-engine
- {:zen/tags #{zen/tag zen/schema}
-  :type zen/map
-  :keys {:dir {:type zen/set
-               :every {:enum [{:value :in} {:value :out}]}}}}
-
  middleware
  {:zen/tags #{zen/tag zen/schema}
   :zen/desc "Middleware tag"
   :type zen/map
   :schema-key {:key :engine}
-  :keys {:engine {:type zen/symbol :tags #{middleware-engine}}}}
+  :keys {:engine {:type zen/symbol :tags #{zen.http.engines/middleware}}
+         :mount
+         {:type zen/map
+          :keys {:tags {:type zen/set
+                        :every {:type zen/symbol :tags #{zen/tag}}}}}}}
 
  op-engine
  {:zen/tags #{zen/tag zen/schema}
@@ -38,7 +37,10 @@
  {:zen/tags #{zen/tag zen/schema}
   :type zen/map
   :schema-key {:key :engine}
-  :keys {:engine {:type zen/symbol :tags #{op-engine}}}}
+  :keys {:engine {:type zen/symbol :tags #{op-engine}}
+         :mount {:type zen/map
+                 :keys {:tags {:type zen/set
+                               :every {:type zen/symbol :tags #{zen/tag}}}}}}}
 
  debug-middleware
  {:zen/tags #{middleware}
@@ -66,49 +68,8 @@
   :zen/desc "Default RPC API - POST /"
   :POST rpc}
 
- format-engine
- {:zen/tags #{zen/tag zen/schema}}
-
  format
  {:zen/tags #{zen/tag zen/schema}}
-
- json
- {:zen/tags #{format format-engine}
-  :zen/desc "json format"
-  :mime-types #{"application/json"}
-  :params {:_format "json"}}
-
- yaml
- {:zen/tags #{format format-engine}
-  :zen/desc "yaml format"
-  :mime-types #{"text/yaml"}
-  :params {:_format "yaml"}}
-
- transit
- {:zen/tags #{format format-engine}
-  :zen/desc "transit format"
-  :mime-types #{"application/transit+json"}
-  :params {:_format "transit"}}
-
- edn
- {:zen/tags #{format format-engine}
-  :zen/desc "transit format"
-  :mime-types #{"application/edn"}
-  :params {:_format "edn"}}
-
- html
- {:zen/tags #{format format-engine}
-  :zen/desc "html"
-  :mime-types #{"text/html"}
-  :params {:_format "html"}}
-
- formats-middleware
- {:zen/tags #{middleware-engine zen/schema}
-  :zen/desc "Formats middleware"
-  :type zen/map
-  :keys {:formats {:type zen/set
-                   :every {:type zen/symbol
-                           :tags #{format}}}}}
 
  http
  {:zen/tags #{zen/tag zen/schema}
@@ -172,35 +133,21 @@
          :query-string {:type zen/string}
          :body {:type zen/any}}}
 
- basic-auth
- {:zen/tags #{middleware-engine zen/schema}
-  :type zen/map
-  :dir #{:in}
-  :keys {:user {:type zen/string}
-         :password {:type zen/string}}}
-
  cors
- {:zen/tags #{middleware-engine zen/schema}
-  :dir #{:out}
-  :type zen/map}
+ {:zen/tags #{zen.http/middleware zen/schema}
+  :engine zen.http.engines/cors}
 
  parse-params
- {:zen/tags #{middleware-engine zen/schema}
-  :dir #{:in}
-  :type zen/map}
+ {:zen/tags #{zen.http/middleware zen/schema}
+  :engine zen.http.engines/parse-params}
 
  cookies
- {:zen/tags #{middleware-engine zen/schema}
-  :type zen/map}
+ {:zen/tags #{zen.http/middleware zen/schema}
+  :engine zen.http.engines/cookies}
 
  response-op
  {:zen/tags #{op-engine zen/schema}
   :type zen/map
   :keys {:response {:type zen/map
                     :values {:type zen/any}}
-         :select {:type zen/keyword}}}
-
- serve-static
- {:zen/tags #{op-engine zen/schema}
-  :type zen/map
-  :keys {:serve {:type zen/vector :every {:type zen/string}}}}}
+         :select {:type zen/keyword}}}}

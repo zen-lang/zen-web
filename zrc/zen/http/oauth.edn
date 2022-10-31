@@ -1,0 +1,34 @@
+{:ns zen.http.oauth
+ :import #{zen.http}
+
+ ;; TODO write schemas on provider and config
+ provider
+ {zen/tags #{zen/tag zen/schema}}
+
+ config
+ {:zen/tags #{zen/tag zen/schema}}
+
+ oauth-index
+ {:zen/tags #{zen/op zen.http/op}
+  :mount {:tags #{zen.http.oauth/config}}}
+
+ oauth-callback
+ {:zen/tags #{zen/op zen.http/op}
+  :mount {:tags #{zen.http.oauth/config}}}
+
+ oauth-redirect
+ {:zen/tags #{zen/op zen.http/op}
+  :mount {:tags #{zen.http.oauth/config}}}
+
+ verify-jwt
+ {:zen/tags #{zen.http/middleware}
+  :engine zen.http.engines/verify-jwt-engine
+  :mount {:tags #{zen.http.oauth/config}}}
+
+ api
+ {:zen/tags #{zen.http/api}
+  ;; TODO fix this engine
+  :engine zen.http/routemap
+  "auth" {:GET oauth-index
+          "callback" {[:provider-id] {:GET oauth-callback}}
+          [:provider-id] {:GET oauth-redirect}}}}

@@ -9,43 +9,43 @@
   '{:ns myweb
     :import #{zen.http}
 
-    index-op
+    index
     {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http/response-op
+     :engine zen.http.engines/response
      :response {:status 200
                 :body "Hello"}}
 
-    override-op
+    override
     {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http/response-op
+     :engine zen.http.engines/response
      :response {:status 200}}
 
     basic-auth
     {:zen/tags #{zen.http/middleware}
-     :engine zen.http/basic-auth
+     :engine zen.http.engines/basic-auth
      :user "john"
      :password "123"}
 
     serve-static
     {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http/serve-static
+     :engine zen.http.engines/serve-static
      :serve ["/test/zen/http/static"]}
 
     api
     {:zen/tags #{zen.http/api}
      :engine zen.http/routemap
      "files" {:* {:GET serve-static}}
-     :GET index-op
+     :GET index
      "test-mw" {:mw [basic-auth]
-                :GET index-op}
-     "method-override" {:PUT override-op}}
+                :GET index}
+     "method-override" {:PUT override}}
 
     http
     {:zen/tags #{zen/start zen.http/http}
      :engine zen.http/httpkit
      :port 8080
      :api api
-     :formats #{zen.http/json zen.http/yaml zen.http/html}}
+     #_:formats #_#{zen.http/json zen.http/yaml zen.http/html}}
 
     system
     {:zen/tags #{zen/system}

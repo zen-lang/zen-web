@@ -76,4 +76,11 @@
  serve-static
  {:zen/tags #{zen.http/op-engine zen/schema}
   :type zen/map
-  :keys {:serve {:type zen/vector :every {:type zen/string}}}}}
+  :keys {:serve {:type zen/vector :every {:type zen/string}}}}
+
+ response
+ {:zen/tags #{zen.http/op-engine zen/schema}
+  :type zen/map
+  :keys {:response {:type zen/map
+                    :values {:type zen/any}}
+         :select {:type zen/keyword}}}}

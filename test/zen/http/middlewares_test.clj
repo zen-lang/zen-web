@@ -13,31 +13,31 @@
 
     index-op
     {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http/response-op
+     :engine zen.http.engines/response
      :response {:status 200
                 :body "Hello"}}
 
     admin-index-op
     {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http/response-op
+     :engine zen.http.engines/response
      :response {:status 200
                 :body "Hello, admin"}}
 
     form-params
     {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http/response-op
+     :engine zen.http.engines/response
      :select :form-params
      :response {:status 200}}
 
     query-params
     {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http/response-op
+     :engine zen.http.engines/response
      :select :params
      :response {:status 200}}
 
     basic-auth
     {:zen/tags #{zen.http/middleware}
-     :engine zen.http/basic-auth
+     :engine zen.http.engines/basic-auth
      :user "john"
      :password "123"}
 
@@ -47,55 +47,36 @@
      :mw [basic-auth]
      :GET admin-index-op}
 
-    cors
-    {:zen/tags #{zen.http/middleware}
-     :engine zen.http/cors}
-
-    parse-params
-    {:zen/tags #{zen.http/middleware}
-     :engine zen.http/parse-params}
-
-    cookies
-    {:zen/tags #{zen.http/middleware}
-     :engine zen.http/cookies}
-
     cookies-op
     {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http/response-op
+     :engine zen.http.engines/response
      :select :cookies
      :response {:status 200}}
 
-    cookie-test
-    {:zen/tags #{zen/op}}
-
-    cookie-set-engine
-    {:zen/tags #{zen/tag zen.http/op-engine zen/schema}
-     :type zen/map}
-
-    cookie-get
+    ;; example of singletone zen op
+    cookie-set
     {:zen/tags #{zen/op zen.http/op}
-     :engine cookie-set-engine}
+     :max-age 1000}
 
     override-op
     {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http/response-op
+     :engine zen.http.engines/response
      :response {:status 200}}
 
     api
     {:zen/tags #{zen.http/api}
      :engine zen.http/routemap
-     :mw [cors]
+     :mw [zen.http/cors]
      :GET index-op
      :POST zen.http/rpc
      #_"search" #_{:api [zd.plugins/search]}
      "params-mw" {:mw [#_zen.http/defaults
-                       parse-params]
-                   ;; TODO implement
+                       zen.http/parse-params]
                   :POST form-params
                   :GET query-params}
-     "cookies-mw" {:mw [cookies]
+     "cookies-mw" {:mw [zen.http/cookies]
                    :GET cookies-op
-                   "get-cookies" {:GET cookie-get}}
+                   "get-cookies" {:GET cookie-set}}
      "method-override" {:PUT override-op}
      "admin" {:apis [admin-api]}}
 
@@ -104,7 +85,7 @@
      :engine zen.http/httpkit
      :port 8080
      :api api
-     :formats #{zen.http/json zen.http/yaml zen.http/html}}
+     #_:formats #_#{zen.http/json zen.http/yaml zen.http/html}}
 
     system
     {:zen/tags #{zen/system}
@@ -174,11 +155,11 @@
 
 (deftest cookies
 
-  (defmethod zen/op 'myweb/cookie-set-engine
-    [ztx config req & opts]
+  (defmethod zen/op 'myweb/cookie-set
+    [ztx {:keys [max-age]} req & opts]
     {:status 200
      :cookies {"token" {:value "justvalue"
-                        :max-age 1000
+                        :max-age max-age
                         :path "/"}
                "another-token" "another-value"}})
 

@@ -37,14 +37,12 @@
  {:zen/tags #{zen/tag zen/schema}
   :type zen/map
   :schema-key {:key :engine}
+  ;; TODO fix me to define singletone ops
+  :validation-type :open
   :keys {:engine {:type zen/symbol :tags #{op-engine}}
          :mount {:type zen/map
                  :keys {:tags {:type zen/set
                                :every {:type zen/symbol :tags #{zen/tag}}}}}}}
-
- debug-middleware
- {:zen/tags #{middleware}
-  :zen/desc "prints request into stdout"}
 
  api
  {:zen/tags #{zen/tag zen/schema}
@@ -58,15 +56,6 @@
  http-engine
  {:zen/tags #{zen/tag}
   :zen/desc "HTTP Server engine"}
-
- rpc
- {:zen/tags #{op}}
-
- rpc-api
- {:zen/tags #{api}
-  :engine routemap
-  :zen/desc "Default RPC API - POST /"
-  :POST rpc}
 
  format
  {:zen/tags #{zen/tag zen/schema}}
@@ -133,21 +122,29 @@
          :query-string {:type zen/string}
          :body {:type zen/any}}}
 
+ ;; instances
+
+ rpc
+ {:zen/tags #{zen/op op}}
+
+ rpc-api
+ {:zen/tags #{api}
+  :engine routemap
+  :zen/desc "Default RPC API - POST /"
+  :POST rpc}
+
+ debug-middleware
+ {:zen/tags #{middleware}
+  :zen/desc "prints request into stdout"}
+
  cors
- {:zen/tags #{zen.http/middleware zen/schema}
+ {:zen/tags #{middleware zen/schema}
   :engine zen.http.engines/cors}
 
  parse-params
- {:zen/tags #{zen.http/middleware zen/schema}
+ {:zen/tags #{middleware zen/schema}
   :engine zen.http.engines/parse-params}
 
  cookies
- {:zen/tags #{zen.http/middleware zen/schema}
-  :engine zen.http.engines/cookies}
-
- response-op
- {:zen/tags #{op-engine zen/schema}
-  :type zen/map
-  :keys {:response {:type zen/map
-                    :values {:type zen/any}}
-         :select {:type zen/keyword}}}}
+ {:zen/tags #{middleware zen/schema}
+  :engine zen.http.engines/cookies}}

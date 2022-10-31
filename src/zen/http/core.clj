@@ -19,23 +19,23 @@
   (fn [ztx cfg request response]
     (zen/engine-or-name cfg)))
 
-(defmethod middleware-in 'zen.http/basic-auth
+(defmethod middleware-in 'zen.http.engines/basic-auth
   [ztx cfg req]
   (mw/verify-basic-auth ztx cfg req))
 
-(defmethod middleware-out 'zen.http/cors
+(defmethod middleware-out 'zen.http.engines/cors
   [ztx cfg req resp]
   (mw/set-cors-headers ztx cfg req resp))
 
-(defmethod middleware-in 'zen.http/parse-params
+(defmethod middleware-in 'zen.http.engines/parse-params
   [ztx cfg req]
   (mw/parse-params ztx cfg req))
 
-(defmethod middleware-in 'zen.http/cookies
+(defmethod middleware-in 'zen.http.engines/cookies
   [ztx cfg req]
   (mw/parse-cookies ztx cfg req))
 
-(defmethod middleware-out 'zen.http/cookies
+(defmethod middleware-out 'zen.http.engines/cookies
   [ztx cfg req resp]
   (mw/set-cookies ztx cfg req resp))
 
@@ -164,13 +164,13 @@
   (when-let [srv (:server state)]
     (srv)))
 
-(defmethod zen/op 'zen.http/response-op
+(defmethod zen/op 'zen.http.engines/response
   [ztx config req & opts]
   (cond-> (:response config)
     (keyword? (:select config))
     (assoc :body (str (get req (:select config))))))
 
-(defmethod zen/op 'zen.http/serve-static
+(defmethod zen/op 'zen.http.engines/serve-static
   [ztx {:keys [serve]} {uri :uri rp :route-params :as req} & opts]
   (let [file-path (str/join "/" (:* rp))]
     (if-let [f (or (io/resource file-path)

@@ -1,34 +1,39 @@
 {:ns zen.http.oauth
- :import #{zen.http}
+ :import #{zen.http zen.http.engines}
+
+ middleware
+ {:zen/tags #{zen/tag zen/schema}}
+
+ verify-jwt
+ {:zen/tags #{zen.http.engines/middleware zen/schema middleware}
+  :dir #{:in}
+  :type zen/map
+  :keys {:config {:type zen/symbol :zen/desc "oauth config instance"}}}
+
+ merge-config
+ {:zen/tags #{zen.http.engines/middleware zen/schema middleware}
+  :dir #{:in}
+  :type zen/map
+  :keys {:config {:type zen/symbol :zen/desc "oauth config instance"}}}
 
  ;; TODO write schemas on provider and config
  provider
- {zen/tags #{zen/tag zen/schema}}
+ {:zen/tags #{zen/tag zen/schema}}
 
  config
  {:zen/tags #{zen/tag zen/schema}}
 
- oauth-index
- {:zen/tags #{zen/op zen.http/op}
-  :mount {:tags #{zen.http.oauth/config}}}
+ index
+ {:zen/tags #{zen.http.engines/op zen/schema}
+  :type zen/map
+  :keys {:config {:type zen/symbol :tags #{config}}}}
 
- oauth-callback
- {:zen/tags #{zen/op zen.http/op}
-  :mount {:tags #{zen.http.oauth/config}}}
+ callback
+ {:zen/tags #{zen.http.engines/op zen/schema}
+  :type zen/map
+  :keys {:config {:type zen/symbol :tags #{config}}}}
 
- oauth-redirect
- {:zen/tags #{zen/op zen.http/op}
-  :mount {:tags #{zen.http.oauth/config}}}
-
- verify-jwt
- {:zen/tags #{zen.http/middleware}
-  :engine zen.http.engines/verify-jwt-engine
-  :mount {:tags #{zen.http.oauth/config}}}
-
- api
- {:zen/tags #{zen.http/api}
-  ;; TODO fix this engine
-  :engine zen.http/routemap
-  "auth" {:GET oauth-index
-          "callback" {[:provider-id] {:GET oauth-callback}}
-          [:provider-id] {:GET oauth-redirect}}}}
+ redirect
+ {:zen/tags #{zen.http.engines/op zen/schema}
+  :type zen/map
+  :keys {:config {:type zen/symbol :tags #{config}}}}}

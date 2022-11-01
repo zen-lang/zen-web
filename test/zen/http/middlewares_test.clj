@@ -53,7 +53,6 @@
      :select :cookies
      :response {:status 200}}
 
-    ;; example of singletone zen op
     cookie-set
     {:zen/tags #{zen/op zen.http/op}
      :max-age 1000}

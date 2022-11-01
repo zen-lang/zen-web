@@ -6,6 +6,10 @@
   :keys {:dir {:type zen/set
                :every {:enum [{:value :in} {:value :out}]}}}}
 
+ op
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map}
+
  ;; TODO implement formats
  format-engine
  {:zen/tags #{zen/tag zen/schema}}
@@ -55,10 +59,6 @@
   :keys {:user {:type zen/string}
          :password {:type zen/string}}}
 
- verify-jwt-engine
- {:zen/tags #{middleware zen/schema}
-  :dir #{:in}}
-
  cors
  {:zen/tags #{middleware zen/schema}
   :dir #{:out}
@@ -74,12 +74,12 @@
   :type zen/map}
 
  serve-static
- {:zen/tags #{zen.http/op-engine zen/schema}
+ {:zen/tags #{op zen/schema}
   :type zen/map
   :keys {:serve {:type zen/vector :every {:type zen/string}}}}
 
  response
- {:zen/tags #{zen.http/op-engine zen/schema}
+ {:zen/tags #{op zen/schema}
   :type zen/map
   :keys {:response {:type zen/map
                     :values {:type zen/any}}

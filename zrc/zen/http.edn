@@ -23,26 +23,14 @@
   :zen/desc "Middleware tag"
   :type zen/map
   :schema-key {:key :engine}
-  :keys {:engine {:type zen/symbol :tags #{zen.http.engines/middleware}}
-         :mount
-         {:type zen/map
-          :keys {:tags {:type zen/set
-                        :every {:type zen/symbol :tags #{zen/tag}}}}}}}
-
- op-engine
- {:zen/tags #{zen/tag zen/schema}
-  :type zen/map}
+  :keys {:engine {:type zen/symbol :tags #{zen.http.engines/middleware}}}}
 
  op
  {:zen/tags #{zen/tag zen/schema}
   :type zen/map
-  :schema-key {:key :engine}
-  ;; TODO fix me to define singletone ops
   :validation-type :open
-  :keys {:engine {:type zen/symbol :tags #{op-engine}}
-         :mount {:type zen/map
-                 :keys {:tags {:type zen/set
-                               :every {:type zen/symbol :tags #{zen/tag}}}}}}}
+  :schema-key {:key :engine}
+  :keys {:engine {:type zen/symbol :tags #{zen.http.engines/op}}}}
 
  api
  {:zen/tags #{zen/tag zen/schema}

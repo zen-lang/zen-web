@@ -113,7 +113,7 @@
   :POST rpc}
 
  debug-middleware
- {:zen/tags #{zen/op middleware}
+ {:zen/tags #{zen/op middleware zen/schema}
   :zen/desc "prints request into stdout"
   :zen/args [request]
   :dir #{:in}}

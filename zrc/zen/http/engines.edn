@@ -10,6 +10,14 @@
  {:zen/tags #{zen/tag zen/schema}
   :type zen/map}
 
+ all-of
+ {:zen/tags #{middleware zen/schema}
+  :zen/desc "executes all mws one by one"
+  :type zen/map
+  :keys {:mws {:type zen/vector
+               :every {:type zen/symbol
+                       :tags #{zen.http/middleware}}}}}
+
  basic-auth
  {:zen/tags #{middleware zen/schema}
   :dir #{:in}

@@ -151,12 +151,12 @@
                                      :headers {"authorization" "Basic am9objoxMjM="}})))
 
   #_(testing "when req method is head no body is returned"
-    (matcho/assert
-     {:status 401
-      :headers {"Content-Type" "text/plain"
-                "WWW-Authenticate" "Basic realm=restricted area"}
-      :body nil?}
-     (web/handle ztx 'myweb/api {:uri "/admin" :request-method :head}))))
+      (matcho/assert
+       {:status 401
+        :headers {"Content-Type" "text/plain"
+                  "WWW-Authenticate" "Basic realm=restricted area"}
+        :body nil?}
+       (web/handle ztx 'myweb/api {:uri "/admin" :request-method :head}))))
 
 (deftest cookies
 
@@ -173,7 +173,7 @@
                                :request-method :get
                                :headers {"cookie" "USER_TOKEN=yes"}})
     {:status 200
-     :body string?})
+     :body #"USER_TOKEN"})
 
   (matcho/assert
    {:status 200
@@ -185,7 +185,7 @@
    (web/handle ztx 'myweb/api {:uri "/params-mw"
                                :request-method :get
                                :query-string "msg=hello+love"})
-   {:status 200 :body "{:msg \"hello love\"}"})
+    {:status 200 :body "{:msg \"hello love\"}"})
 
   (matcho/match
    (web/handle ztx 'myweb/api {:uri "/params-mw"
@@ -201,4 +201,41 @@
                                               "&value2=" (form-encode " yet another string %"))
                                          .getBytes
                                          (io/input-stream))})
-   {:status 200 :body "{:value1 \"a string\", :value2 \" yet another string %\"}"}))
+    {:status 200 :body "{:value1 \"a string\", :value2 \" yet another string %\"}"}))
+
+(deftest combinator-all-of
+  (def myconfig
+    '{:ns mytest
+      :import #{zen.http}
+
+      index
+      {:zen/tags #{zen/op zen.http/op}
+       :engine zen.http.engines/response
+       :response {:status 200
+                  :body "Hello"}}
+
+      defaults
+      {:zen/tags #{zen.http/middleware}
+       :engine zen.http.engines/all-of
+       :mws [zen.http/parse-params zen.http/cors zen.http/cookies]}
+
+      api
+      {:zen/tags #{zen.http/api}
+       :engine zen.http/routemap
+       :mw [defaults]
+       :GET index}
+
+      http
+      {:zen/tags #{zen/start zen.http/http}
+       :engine zen.http/httpkit
+       :port 8080
+       :api api}
+
+      system
+      {:zen/tags #{zen/system}
+       :start [http]}})
+
+  (zen/load-ns ztx myconfig)
+
+  (is (empty? (zen/errors ztx)))
+  )

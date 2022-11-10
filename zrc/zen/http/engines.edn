@@ -2,76 +2,20 @@
 
  middleware
  {:zen/tags #{zen/tag zen/schema}
+  :zen/desc "tag for middleware engine"
   :type zen/map
-  :keys {:dir {:type zen/set
-               :every {:enum [{:value :in} {:value :out}]}}}}
+  :keys {:dir {:type zen/set :every {:type zen/keyword}}}}
 
  op
  {:zen/tags #{zen/tag zen/schema}
   :type zen/map}
 
- ;; TODO implement formats
- format-engine
- {:zen/tags #{zen/tag zen/schema}}
-
- json
- {:zen/tags #{format-engine}
-  :zen/desc "json format"
-  :mime-types #{"application/json"}
-  :params {:_format "json"}}
-
- yaml
- {:zen/tags #{format-engine}
-  :zen/desc "yaml format"
-  :mime-types #{"text/yaml"}
-  :params {:_format "yaml"}}
-
- transit
- {:zen/tags #{format-engine}
-  :zen/desc "transit format"
-  :mime-types #{"application/transit+json"}
-  :params {:_format "transit"}}
-
- edn
- {:zen/tags #{format-engine}
-  :zen/desc "transit format"
-  :mime-types #{"application/edn"}
-  :params {:_format "edn"}}
-
- html
- {:zen/tags #{format-engine}
-  :zen/desc "html"
-  :mime-types #{"text/html"}
-  :params {:_format "html"}}
-
- formats
- {:zen/tags #{middleware zen/schema}
-  :zen/desc "Formats middleware"
-  :type zen/map
-  :keys {:formats {:type zen/set
-                   :every {:type zen/symbol
-                           :tags #{format-engine}}}}}
-
  basic-auth
  {:zen/tags #{middleware zen/schema}
-  :type zen/map
   :dir #{:in}
+  :type zen/map
   :keys {:user {:type zen/string}
          :password {:type zen/string}}}
-
- cors
- {:zen/tags #{middleware zen/schema}
-  :dir #{:out}
-  :type zen/map}
-
- parse-params
- {:zen/tags #{middleware zen/schema}
-  :dir #{:in}
-  :type zen/map}
-
- cookies
- {:zen/tags #{middleware zen/schema}
-  :type zen/map}
 
  serve-static
  {:zen/tags #{op zen/schema}

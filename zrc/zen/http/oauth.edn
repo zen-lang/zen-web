@@ -1,39 +1,59 @@
 {:ns zen.http.oauth
  :import #{zen.http zen.http.engines}
 
- middleware
- {:zen/tags #{zen/tag zen/schema}}
+ ;; TODO make exports keyword
+ exports #{api config provider index callback redirect verify-jwt}
 
- verify-jwt
- {:zen/tags #{zen.http.engines/middleware zen/schema middleware}
-  :dir #{:in}
-  :type zen/map
-  :keys {:config {:type zen/symbol :zen/desc "oauth config instance"}}}
+ middleware {:zen/tags #{zen/tag}}
 
- merge-config
- {:zen/tags #{zen.http.engines/middleware zen/schema middleware}
-  :dir #{:in}
-  :type zen/map
-  :keys {:config {:type zen/symbol :zen/desc "oauth config instance"}}}
-
- ;; TODO write schemas on provider and config
  provider
- {:zen/tags #{zen/tag zen/schema}}
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map
+  :require #{:client-id :client-secret}
+  :validation-type :open
+  :keys {:client-id {:type zen/string}
+         :client-secret {:type zen/string}}}
 
  config
- {:zen/tags #{zen/tag zen/schema}}
+ ;; TODO add zen.http.engines.op-arg ?
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map
+  :require #{:providers :base-uri :cookie :secret :zen.http/api}
+  :keys {:providers {:type zen/vector
+                     :every {:type zen/symbol
+                             :tags #{provider}}}
+         :public {:type zen/vector :every {:type zen/string}}
+         :zen.http/api {:type zen/symbol :tags #{api}}
+         ;; TODO add uri regex
+         :base-uri {:type zen/string}
+         :cookie {:type zen/string}
+         :secret {:type zen/string}}}
 
  index
- {:zen/tags #{zen.http.engines/op zen/schema}
-  :type zen/map
-  :keys {:config {:type zen/symbol :tags #{config}}}}
+ {:zen/tags #{zen/op zen.http/op}
+  :zen/args [config]}
 
  callback
- {:zen/tags #{zen.http.engines/op zen/schema}
-  :type zen/map
-  :keys {:config {:type zen/symbol :tags #{config}}}}
+ {:zen/tags #{zen/op zen.http/op}
+  :zen/args [config]}
 
  redirect
- {:zen/tags #{zen.http.engines/op zen/schema}
-  :type zen/map
-  :keys {:config {:type zen/symbol :tags #{config}}}}}
+ {:zen/tags #{zen/op zen.http/op}
+  :zen/args [config]}
+
+ verify-jwt
+ {:zen/tags #{zen.http/middleware middleware zen/op}
+  :zen/args [config]}
+
+ snap-config
+ {:zen/tags #{zen.http/middleware middleware zen/op}
+  :zen/desc "resolves references in oauth config for handlers"
+  :zen/args [config]}
+
+ api
+ {:zen/tags #{zen.http/api zen/tag zen.http.oauth/api}
+  :engine zen.http/routemap
+  :mw [snap-config]
+  "auth" {:GET index
+          "callback" {[:provider-id] {:GET callback}}
+          [:provider-id] {:GET redirect}}}}

@@ -1,13 +1,18 @@
 {:ns zen.http
  :import #{zen.http.engines}
 
- resolve-route
- {:zen/tags #{zen/op}
-  :zen/desc "Resolve route. Get request and return op, middlewares and route-params"}
+ middleware
+ {:zen/tags #{zen/tag zen/schema zen/op}
+  :type zen/map
+  :schema-key {:key :engine}
+  :keys {:engine {:type zen/symbol :tags #{zen.http.engines/middleware}}
+         :dir {:type zen/set :every {:type zen/keyword}}}}
 
- dispatch
- {:zen/tags #{zen/op}
-  :zen/desc "Dispatch request to op"}
+ op
+ {:zen/tags #{zen/tag zen/schema}
+  :type zen/map
+  :schema-key {:key :engine}
+  :keys {:engine {:type zen/symbol :tags #{zen.http.engines/op}}}}
 
  api-engine
  {:zen/tags #{zen/tag}
@@ -18,21 +23,8 @@
   :type zen/map
   :values {:type zen/any}}
 
- middleware
- {:zen/tags #{zen/tag zen/schema}
-  :zen/desc "Middleware tag"
-  :type zen/map
-  :schema-key {:key :engine}
-  :keys {:engine {:type zen/symbol :tags #{zen.http.engines/middleware}}}}
-
- op
- {:zen/tags #{zen/tag zen/schema}
-  :type zen/map
-  :validation-type :open
-  :schema-key {:key :engine}
-  :keys {:engine {:type zen/symbol :tags #{zen.http.engines/op}}}}
-
  api
+ ;; TODO populate this schema
  {:zen/tags #{zen/tag zen/schema}
   :zen/desc "API interface"
   :type zen/map
@@ -60,19 +52,8 @@
          :formats {:type zen/set
                    :every {:type zen/symbol :tags #{format}}}}}
 
- ;; :defaults {ip         "0.0.0.0"
- ;;            port       8090
- ;;            thread     4
- ;;            queue-size 20480
- ;;            max-body   8388608
- ;;            max-ws     4194304
- ;;            max-line   8192
- ;;            proxy-protocol :disable
- ;;            legacy-return-value? true
- ;;            server-header "http-kit"}
-
  httpkit
- {:zen/tags #{zen/schema zen/engine zen.http/http-engine}
+ {:zen/tags #{zen/schema zen/engine http-engine}
   :zen/desc "HTTP Server implementation by httpkit"
   :zen/state-key :http
   :type zen/map
@@ -110,10 +91,20 @@
          :query-string {:type zen/string}
          :body {:type zen/any}}}
 
- ;; instances
+ response
+ {:zen/tags #{zen/schema}
+  :type zen/map}
 
  rpc
  {:zen/tags #{zen/op op}}
+
+ resolve-route
+ {:zen/tags #{zen/op}
+  :zen/desc "Resolve route. Get request and return op, middlewares and route-params"}
+
+ dispatch
+ {:zen/tags #{zen/op}
+  :zen/desc "Dispatch request to op"}
 
  rpc-api
  {:zen/tags #{api}
@@ -122,17 +113,22 @@
   :POST rpc}
 
  debug-middleware
- {:zen/tags #{middleware}
-  :zen/desc "prints request into stdout"}
+ {:zen/tags #{zen/op middleware}
+  :zen/desc "prints request into stdout"
+  :zen/args [request]
+  :dir #{:in}}
 
  cors
- {:zen/tags #{middleware zen/schema}
-  :engine zen.http.engines/cors}
+ {:zen/tags #{zen/op middleware zen/schema}
+  :zen/args [request response]
+  :dir #{:out}}
 
  parse-params
- {:zen/tags #{middleware zen/schema}
-  :engine zen.http.engines/parse-params}
+ {:zen/tags #{zen/op middleware zen/schema}
+  :zen/args [request]
+  :dir #{:in}}
 
  cookies
- {:zen/tags #{middleware zen/schema}
-  :engine zen.http.engines/cookies}}
+ {:zen/tags #{zen/op middleware zen/schema}
+  :zen/args [request response]
+  :dir #{:in :out}}}

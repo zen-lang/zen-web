@@ -53,8 +53,14 @@
      :select :cookies
      :response {:status 200}}
 
+    *cookie-set
+    {:zen/tags #{zen.http.engines/op zen/schema}
+     :type zen/map
+     :keys {:max-age {:type zen/integer}}}
+
     cookie-set
     {:zen/tags #{zen/op zen.http/op}
+     :engine *cookie-set
      :max-age 1000}
 
     override-op
@@ -68,7 +74,7 @@
      :mw [zen.http/cors]
      :GET index-op
      :POST zen.http/rpc
-     #_"search" #_{:api [zd.plugins/search]}
+     ;; TODO implement mw combinators
      "params-mw" {:mw [#_zen.http/defaults
                        zen.http/parse-params]
                   :POST form-params
@@ -154,7 +160,7 @@
 
 (deftest cookies
 
-  (defmethod zen/op 'myweb/cookie-set
+  (defmethod zen/op 'myweb/*cookie-set
     [ztx {:keys [max-age]} req & opts]
     {:status 200
      :cookies {"token" {:value "justvalue"

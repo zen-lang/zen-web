@@ -20,29 +20,30 @@
     (zen/engine-or-name cfg)))
 
 (defmethod middleware-in 'zen.http.engines/basic-auth
-  [ztx cfg req]
+  [ztx cfg req & args]
   (mw/verify-basic-auth ztx cfg req))
 
-(defmethod middleware-out 'zen.http.engines/cors
-  [ztx cfg req resp]
+(defmethod middleware-out 'zen.http/cors
+  [ztx cfg req resp & args]
   (mw/set-cors-headers ztx cfg req resp))
 
-(defmethod middleware-in 'zen.http.engines/parse-params
-  [ztx cfg req]
+(defmethod middleware-in 'zen.http/parse-params
+  [ztx cfg req & args]
   (mw/parse-params ztx cfg req))
 
-(defmethod middleware-in 'zen.http.engines/cookies
-  [ztx cfg req]
+(defmethod middleware-in 'zen.http/cookies
+  [ztx cfg req & args]
   (mw/parse-cookies ztx cfg req))
 
-(defmethod middleware-out 'zen.http.engines/cookies
-  [ztx cfg req resp]
+(defmethod middleware-out 'zen.http/cookies
+  [ztx cfg req resp & args]
   (mw/set-cookies ztx cfg req resp))
 
 (defmulti resolve-route
   (fn [_ztx cfg _path {_params :params _mws :middlewares _pth :path}]
     (zen/engine-or-name cfg)))
 
+;; TODO wrap in zen/op
 (defmethod resolve-route 'zen.http/routemap
   [ztx cfg path ctx]
   (rm/resolve-route ztx cfg path ctx))
@@ -87,6 +88,14 @@
        (routes ztx cfg-or-name ctx))
      (sort-by (fn [x] (str/join "/" (:path x)))))))
 
+(defn resolve-mw [ztx sym]
+  ;; take opts from instance or engine
+  (let [mw-cfg (zen/get-symbol ztx sym)]
+    (->> (zen/engine-or-name mw-cfg)
+         (zen/get-symbol ztx)
+         (merge mw-cfg))))
+
+;; TODO wrap in zen/op
 (defn dispatch [ztx comp-symbol {uri :uri meth :request-method :as req}]
   (let [api-config (zen/get-symbol ztx comp-symbol)
         path (conj (rm/pathify uri) (-> (or meth :get) name str/upper-case keyword))
@@ -96,8 +105,7 @@
       (let [req*
             (loop [mws mw
                    req (assoc req :route-params params)]
-              (let [mw-cfg (zen/get-symbol ztx (first mws))
-                    {:keys [dir] :as eng-cfg} (zen/get-symbol ztx (:engine mw-cfg))]
+              (let [{:keys [dir] :as mw-cfg} (resolve-mw ztx (first mws))]
                 (cond
                   (empty? mws) req
               ;; TODO add error if middleware not found?
@@ -118,9 +126,9 @@
               (zen/op-call ztx op req* session))]
 
         (reduce (fn [resp* mw-symbol]
-                  (let [mw-cfg (zen/get-symbol ztx mw-symbol)
-                        {:keys [dir] :as eng-cfg} (zen/get-symbol ztx (:engine mw-cfg))]
+                  (let [{:keys [dir] :as mw-cfg} (resolve-mw ztx mw-symbol)]
                     (cond
+                      ;; TODO impl ::response for outcoming mw
                       (nil? mw-cfg) resp*
                       (or (nil? dir) (contains? dir :out))
                       (utils/deep-merge resp* (middleware-out ztx mw-cfg req* resp*))
@@ -165,13 +173,13 @@
     (srv)))
 
 (defmethod zen/op 'zen.http.engines/response
-  [ztx config req & opts]
+  [ztx config req & args]
   (cond-> (:response config)
     (keyword? (:select config))
     (assoc :body (str (get req (:select config))))))
 
 (defmethod zen/op 'zen.http.engines/serve-static
-  [ztx {:keys [serve]} {uri :uri rp :route-params :as req} & opts]
+  [ztx {:keys [serve]} {uri :uri rp :route-params :as req} & args]
   (let [file-path (str/join "/" (:* rp))]
     (if-let [f (or (io/resource file-path)
                    (->> serve

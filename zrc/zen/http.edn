@@ -21,17 +21,29 @@
  routemap
  {:zen/tags #{zen/schema api-engine}
   :type zen/map
-  :values {:type zen/any}}
+  :key {:type zen/case
+        :case [{:when {:type zen/keyword}}
+               {:when {:type zen/vector}
+                :then {:type zen/vector
+                       :every {:type zen/keyword}}}
+               {:when {:type zen/string}}]}
+  :keys {:apis {:type zen/vector
+                :every {:type zen/symbol
+                        :tags #{zen.http/api}}}
+         ;; TODO implement in engine
+         :middlewares {:type zen/vector
+                       :every {:type zen/symbol
+                               :tags #{zen.http/middleware}}}
+         :mw {:type zen/vector
+              :every {:type zen/symbol
+                      :tags #{zen.http/middleware}}}}}
 
  api
- ;; TODO populate this schema
  {:zen/tags #{zen/tag zen/schema}
   :zen/desc "API interface"
   :type zen/map
   :schema-key {:key :engine}
-  :keys {:engine {:type zen/symbol :tags #{api-engine}}
-         :middlewares {:type zen/vector
-                       :every {:type zen/symbol :tags #{middleware}}}}}
+  :keys {:engine {:type zen/symbol :tags #{api-engine}}}}
 
  http-engine
  {:zen/tags #{zen/tag}
@@ -115,20 +127,16 @@
  debug-middleware
  {:zen/tags #{zen/op middleware zen/schema}
   :zen/desc "prints request into stdout"
-  :zen/args [request]
   :dir #{:in}}
 
  cors
  {:zen/tags #{zen/op middleware zen/schema}
-  :zen/args [request response]
   :dir #{:out}}
 
  parse-params
  {:zen/tags #{zen/op middleware zen/schema}
-  :zen/args [request]
   :dir #{:in}}
 
  cookies
  {:zen/tags #{zen/op middleware zen/schema}
-  :zen/args [request response]
   :dir #{:in :out}}}

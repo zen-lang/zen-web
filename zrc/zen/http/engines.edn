@@ -30,6 +30,12 @@
   :type zen/map
   :keys {:serve {:type zen/vector :every {:type zen/string}}}}
 
+ redirect
+ {:zen/tags #{op zen/schema}
+  :type zen/map
+  :require #{:to}
+  :keys {:to {:type zen/string}}}
+
  response
  {:zen/tags #{op zen/schema}
   :type zen/map

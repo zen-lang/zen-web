@@ -195,6 +195,11 @@
     (keyword? (:select config))
     (assoc :body (str (get req (:select config))))))
 
+(defmethod zen/op 'zen.http.engines/redirect
+  [ztx {:keys [to]} req & args]
+  {:status 301
+   :headers {"Location" to}})
+
 (defmethod zen/op 'zen.http.engines/serve-static
   [ztx {:keys [serve]} {uri :uri rp :route-params :as req} & args]
   (let [file-path (str/join "/" (:* rp))]

@@ -113,3 +113,50 @@
     :body "file not found"}
    (web/handle ztx 'myweb/api {:uri "/files/not-found.jpg" :request-method :get})))
 
+(deftest redirect-op
+
+  (def myztx (zen/new-context))
+
+  (def myapp-config
+    '{:ns myapp
+      :import #{zen.http}
+
+      ->index
+      {:zen/tags #{zen/op zen.http/op}
+       :engine zen.http.engines/redirect
+       :to "/index"}
+
+      index
+      {:zen/tags #{zen/op zen.http/op}
+       :engine zen.http.engines/response
+       :response {:status 200 :body "hello"}}
+
+      api
+      {:zen/tags #{zen.http/api}
+       :engine zen.http/routemap
+       :GET ->index
+       "index" {:GET index}}
+
+      http
+      {:zen/tags #{zen/start zen.http/http}
+       :engine zen.http/httpkit
+       :port 5678
+       :api api}
+
+      system
+      {:zen/tags #{zen/system}
+       :start [http]}})
+
+  (zen/load-ns myztx myapp-config)
+
+  (comment
+    (zen/start-system myztx 'myapp/system)
+
+    (zen/stop-system myztx))
+
+  (is (empty? (zen/errors myztx)))
+
+  (matcho/assert
+   {:status 301 :headers {"Location" "/index"}}
+   (web/handle myztx 'myapp/api {:uri "/" :request-method :get})))
+

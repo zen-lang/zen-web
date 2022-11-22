@@ -6,6 +6,7 @@
    [ring.util.codec :as codec]
    [org.httpkit.server :as http-kit]
    [clojure.string :as str]
+   [zen.http.oauth.core :as oauth]
    [zen.http.utils :as utils]
    [zen.http.httpkit]
    [zen.http.routemap :as rm]
@@ -18,6 +19,22 @@
 (defmulti middleware-out
   (fn [ztx cfg request response]
     (zen/engine-or-name cfg)))
+
+(defmethod middleware-in 'zen.http.oauth/verify-jwt
+  [ztx cfg req & args]
+  (oauth/verify-jwt ztx cfg req))
+
+(defmethod middleware-in 'zen.http.oauth/snap-config
+  [ztx cfg req & args]
+  (oauth/snap-config ztx cfg req))
+
+(defmethod zen/op 'zen.http.oauth/redirect
+  [ztx cfg req & opts]
+  (oauth/redirect ztx cfg req))
+
+(defmethod zen/op 'zen.http.oauth/callback
+  [ztx cfg req & opts]
+  (oauth/callback ztx cfg req))
 
 (defmethod middleware-in 'zen.http.engines/basic-auth
   [ztx cfg req & args]

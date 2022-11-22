@@ -9,7 +9,14 @@
   :require #{:client-id :client-secret}
   :validation-type :open
   :keys {:client-id {:type zen/string}
-         :client-secret {:type zen/string}}}
+         :client-secret {:type zen/string}
+         :userinfo-endpoint {:type zen/string}
+         :token-endpoint {:type zen/string}
+         :authorize-endpoint {:type zen/string}
+         ;; TODO add redirect_uri??
+         ;; TODO add provider-specific configuration w schema-key?
+         :scopes {:type zen/vector
+                  :every {:type zen/string}}}}
 
  config
  {:zen/tags #{zen/tag zen/schema}
@@ -18,7 +25,7 @@
   :keys {:providers {:type zen/vector
                      :every {:type zen/symbol
                              :tags #{provider}}}
-         :zen/binding {:type zen/symbol :tags #{zen/binding}}
+         :zen/bind {:type zen/symbol :tags #{zen/binding}}
          :public {:type zen/vector :every {:type zen/string}}
          ;; TODO add uri regex
          :base-uri {:type zen/string}
@@ -27,7 +34,8 @@
 
  config-binding
  {:zen/tags #{zen/tag zen/binding}
-  :binds config}
+  ;; TODO implement interface check
+  #_:tags #_#{config}}
 
  index
  {:zen/tags #{zen/op zen.http/op}
@@ -43,12 +51,14 @@
 
  verify-jwt
  {:zen/tags #{zen.http/middleware middleware zen/op}
-  :config config-binding}
+  :config config-binding
+  :dir #{:in}}
 
  snap-config
  {:zen/tags #{zen.http/middleware middleware zen/op}
-  :zen/desc "resolves references in oauth config for handlers"
-  :config config-binding}
+  :zen/desc "resolves provider refs in oauth config for ops"
+  :config config-binding
+  :dir #{:in}}
 
  api
  {:zen/tags #{zen.http/api zen/tag zen.http.oauth/api}

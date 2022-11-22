@@ -1,6 +1,8 @@
 {:paths ["src" "zrc"]
  :deps {org.clojure/clojure       {:mvn/version "1.11.1"}
         http-kit/http-kit         {:mvn/version "2.7.0-alpha1"}
+        ;; TODO remove clj-http
+        clj-http/clj-http         {:mvn/version "3.12.3"}
 
         cheshire/cheshire         {:mvn/version "5.11.0"}
         clj-commons/clj-yaml      {:mvn/version "0.7.108"}

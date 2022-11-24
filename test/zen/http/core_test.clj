@@ -67,8 +67,8 @@
 (deftest routes-test
   (matcho/match
    (web/*routes ztx 'myweb/api)
-   [{:path [:GET]}
-    {:path ["method-override" :PUT]}]))
+    [{:path [:GET]}
+     {:path ["method-override" :PUT]}]))
 
 (deftest execution-stack
 

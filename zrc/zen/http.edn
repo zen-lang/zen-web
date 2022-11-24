@@ -139,4 +139,9 @@
 
  cookies
  {:zen/tags #{zen/op middleware zen/schema}
-  :dir #{:in :out}}}
+  :dir #{:in :out}}
+
+ defaults
+ {:zen/tags #{zen/op middleware zen/schema}
+  :engine zen.http.engines/all-of
+  :mws [cors parse-params cookies]}}

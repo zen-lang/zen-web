@@ -1,5 +1,7 @@
 (ns zen.http.utils
-  (:require [clojure.string :as str]))
+  (:require
+   [clojure.string :as str]
+   [zen.core :as zen]))
 
 (defn deep-merge
   ;; TODO rewrite to use transients
@@ -19,3 +21,11 @@
     (if-let [i (str/index-of ct ";")]
       (subs ct 0 i)
       ct)))
+
+(defn resolve-mw [ztx sym]
+  ;; take config from instance or engine
+  (let [mw-cfg (zen/get-symbol ztx sym)]
+    (->> (zen/engine-or-name mw-cfg)
+         (zen/get-symbol ztx)
+         (deep-merge mw-cfg))))
+

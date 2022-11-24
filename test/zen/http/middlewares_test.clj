@@ -74,9 +74,7 @@
      :mw [zen.http/cors]
      :GET index-op
      :POST zen.http/rpc
-     ;; TODO implement mw combinators
-     "params-mw" {:mw [#_zen.http/defaults
-                       zen.http/parse-params]
+     "params-mw" {:mw [zen.http/parse-params]
                   :POST form-params
                   :GET query-params}
      "cookies-mw" {:mw [zen.http/cookies]
@@ -113,22 +111,25 @@
          (web/handle ztx 'myweb/api {:uri "/" :request-method :get}))))
 
 (deftest cors-middleware
+  (def cors-headers {"access-control-request-headers" "Cookie, Content-Type"
+                     "access-control-allow-methods" "*"
+                     "origin" "localhost:8080"})
+
   (testing "options always returns cors headers"
     (matcho/match
-     (web/handle ztx 'myweb/api {:uri "/" :request-method :options})
+     (web/handle ztx 'myweb/api {:uri "/" :request-method :options :headers cors-headers})
       {:status 200,
        :headers not-empty})
 
     (matcho/match
-     (web/handle ztx 'myweb/api {:uri "/admin" :request-method :options})
+     (web/handle ztx 'myweb/api {:uri "/admin" :request-method :options :headers cors-headers})
       {:status 200,
        :headers not-empty}))
 
   (testing "if origin is provided cors headers are returned"
     (matcho/match
-     (web/handle ztx 'myweb/api {:uri "/"
-                                 :request-method :get
-                                 :headers {"origin" "localhost:8080"}})
+     (web/handle ztx 'myweb/api {:uri "/" :request-method :get :headers cors-headers})
+
       {:status 200
        :headers
        {"Access-Control-Allow-Origin" "localhost:8080"
@@ -148,15 +149,7 @@
   (is (= {:status 200, :body "Hello, admin"}
          (web/handle ztx 'myweb/api {:uri "/admin"
                                      :request-method :get
-                                     :headers {"authorization" "Basic am9objoxMjM="}})))
-
-  #_(testing "when req method is head no body is returned"
-      (matcho/assert
-       {:status 401
-        :headers {"Content-Type" "text/plain"
-                  "WWW-Authenticate" "Basic realm=restricted area"}
-        :body nil?}
-       (web/handle ztx 'myweb/api {:uri "/admin" :request-method :head}))))
+                                     :headers {"authorization" "Basic am9objoxMjM="}}))))
 
 (deftest cookies
 
@@ -168,12 +161,12 @@
                         :path "/"}
                "another-token" "another-value"}})
 
-  (matcho/match
+  (matcho/assert
+   {:status 200
+    :body {"USER_TOKEN" {:value "yes"}}}
    (web/handle ztx 'myweb/api {:uri "/cookies-mw"
                                :request-method :get
-                               :headers {"cookie" "USER_TOKEN=yes"}})
-    {:status 200
-     :body #"USER_TOKEN"})
+                               :headers {"cookie" "USER_TOKEN=yes"}}))
 
   (matcho/assert
    {:status 200
@@ -181,29 +174,31 @@
    (web/handle ztx 'myweb/api {:uri "/cookies-mw/get-cookies" :request-method :get})))
 
 (deftest query-string
-  (matcho/match
+  (matcho/assert
+   {:status 200 :body {:msg "hello love"}}
    (web/handle ztx 'myweb/api {:uri "/params-mw"
                                :request-method :get
-                               :query-string "msg=hello+love"})
-    {:status 200 :body "{:msg \"hello love\"}"})
+                               :query-string "msg=hello+love"}))
 
-  (matcho/match
+  (matcho/assert
+   {:status 200 :body {:msg nil}}
    (web/handle ztx 'myweb/api {:uri "/params-mw"
                                :request-method :get
-                               :query-string "msg"})
-    {:status 200 :body "{:msg nil}"})
+                               :query-string "msg"}))
 
-  (matcho/match
+  (matcho/assert
+   {:status 200
+    :body {:value1 "a string", :value2 " yet another string %"}}
    (web/handle ztx 'myweb/api {:uri "/params-mw"
                                :request-method :post
                                :headers {"content-type" "application/x-www-form-urlencoded"}
                                :body (-> (str "value1=" (form-encode "a string")
                                               "&value2=" (form-encode " yet another string %"))
                                          .getBytes
-                                         (io/input-stream))})
-    {:status 200 :body "{:value1 \"a string\", :value2 \" yet another string %\"}"}))
+                                         (io/input-stream))})))
 
 (deftest combinator-all-of
+
   (def myconfig
     '{:ns mytest
       :import #{zen.http}
@@ -211,19 +206,18 @@
       index
       {:zen/tags #{zen/op zen.http/op}
        :engine zen.http.engines/response
+       :select [:query-params :cookies]
        :response {:status 200
-                  :body "Hello"}}
-
-      defaults
-      {:zen/tags #{zen.http/middleware}
-       :engine zen.http.engines/all-of
-       :mws [zen.http/parse-params zen.http/cors zen.http/cookies]}
+                  :cookies
+                  {"token" {:value "justvalue"
+                            :max-age "1000"
+                            :path "/"}}}}
 
       api
       {:zen/tags #{zen.http/api}
        :engine zen.http/routemap
-       :mw [defaults]
-       :GET index}
+       :mw [zen.http/defaults]
+       "index" {:GET index}}
 
       http
       {:zen/tags #{zen/start zen.http/http}
@@ -238,4 +232,25 @@
   (zen/load-ns ztx myconfig)
 
   (is (empty? (zen/errors ztx)))
-  )
+
+  (testing "params are parsed when all-of is applied"
+    (matcho/assert
+     {:status 200
+      :body {:query-params {:key "value"}}}
+     (web/handle ztx 'mytest/api {:request-method :get :uri "/index" :query-string "key=value"})))
+
+  (testing "cookies are parsed when all-of is applied"
+    (matcho/assert
+     {:status 200
+      :body {:cookies {"USER_TOKEN" {:value "yes"}}}}
+     (web/handle ztx 'mytest/api {:uri "/index"
+                                  :request-method :get
+                                  :headers {"cookie" "USER_TOKEN=yes"}})))
+
+  (testing "cookies are set when all-of is applied"
+    (matcho/assert
+     {:status 200
+      :headers {"Set-Cookie" ["token=justvalue;Max-Age=1000;Path=/"]}
+      :body empty?}
+     (web/handle ztx 'mytest/api {:uri "/index"
+                                  :request-method :get}))))

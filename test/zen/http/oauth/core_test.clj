@@ -69,9 +69,7 @@
     {:zen/tags #{zen.http/api}
      :engine zen.http/routemap
      :apis [zen.http.oauth/api]
-     :mw [zen.http/cors
-          zen.http/parse-params
-          zen.http/cookies
+     :mw [zen.http/defaults
           zen.http.oauth/verify-jwt]
      "public" {:GET simple-response}
      "private" {:GET simple-response}}})
@@ -96,6 +94,9 @@
   (matcho/assert
    {:status 200}
    (http/handle ztx 'oauth.example/api {:request-method :get :uri "/public"}))
+
+  (http/handle ztx 'oauth.example/api {:request-method :get :uri "/private"
+                                       :headers {"Authorization" "Bearer 123"}})
 
   (matcho/assert
    {:status 302

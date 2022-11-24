@@ -129,9 +129,9 @@
   ;; test two route engines
   (matcho/match
    (web/*resolve-route ztx 'myweb/route  ["custom" "ups" :GET])
-    {:op 'myweb/custom-match
-     :path ["custom" "ups" :GET]
-     :resolution-path ['myweb/route "custom" 'myweb/custom-api "ups" :GET]})
+   {:op 'myweb/custom-match
+    :path ["custom" "ups" :GET]
+    :resolution-path ['myweb/route "custom" 'myweb/custom-api "ups" :GET]})
 
   ;; test two route maps
   (matcho/match

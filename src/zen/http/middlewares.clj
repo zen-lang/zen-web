@@ -118,3 +118,39 @@
                                (write-attr-map (dissoc v :value)))
                         (codec/form-encode {k v})))))]
       (assoc-in resp [:headers "Set-Cookie"] (vec http-cookies)))))
+
+(defn all-of-in [ztx {:keys [mws]} req]
+  (let [mws-in (->> mws
+                    (map #(utils/resolve-mw ztx %))
+                    (filter #(contains? (:dir %) :in)))]
+    (loop [mws mws-in
+           req req]
+      (if (empty? mws)
+        req
+        ;; avoid transitive dep
+        (let [method-fn (ns-resolve (find-ns 'zen.http.core) 'middleware-in)
+              patch (method-fn ztx (first mws) req)]
+          (if-let [resp (:zen.http.core/response patch)]
+            resp
+            (recur (rest mws)
+                   (if (map? patch)
+                     (utils/deep-merge req patch)
+                     req))))))))
+
+(defn all-of-out [ztx {:keys [mws]} req resp]
+  (let [mws-out (->> mws
+                     (map #(utils/resolve-mw ztx %))
+                     (filter #(contains? (:dir %) :out)))]
+    (loop [mws mws-out
+           resp resp]
+      (if (empty? mws)
+        resp
+        ;; avoid transitive dep
+        (let [method-fn (ns-resolve (find-ns 'zen.http.core) 'middleware-out)
+              patch (method-fn ztx (first mws) req resp)]
+          (if-let [resp (:zen.http.core/response patch)]
+            resp
+            (recur (rest mws)
+                   (if (map? patch)
+                     (utils/deep-merge resp patch)
+                     resp))))))))

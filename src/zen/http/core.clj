@@ -56,6 +56,14 @@
   [ztx cfg req resp & args]
   (mw/set-cookies ztx cfg req resp))
 
+(defmethod middleware-in 'zen.http.engines/all-of
+  [ztx cfg req & args]
+  (mw/all-of-in ztx cfg req))
+
+(defmethod middleware-out 'zen.http.engines/all-of
+  [ztx cfg req resp & args]
+  (mw/all-of-out ztx cfg req resp))
+
 (defmulti resolve-route
   (fn [_ztx cfg _path {_params :params _mws :middlewares _pth :path}]
     (zen/engine-or-name cfg)))
@@ -105,56 +113,53 @@
        (routes ztx cfg-or-name ctx))
      (sort-by (fn [x] (str/join "/" (:path x)))))))
 
-(defn resolve-mw [ztx sym]
-  ;; take opts from instance or engine
-  (let [mw-cfg (zen/get-symbol ztx sym)]
-    (->> (zen/engine-or-name mw-cfg)
-         (zen/get-symbol ztx)
-         (merge mw-cfg))))
-
 ;; TODO wrap in zen/op
 (defn dispatch [ztx comp-symbol {uri :uri meth :request-method :as req}]
   (let [api-config (zen/get-symbol ztx comp-symbol)
         path (conj (rm/pathify uri) (-> (or meth :get) name str/upper-case keyword))
+        ;; TODO understand if we need session param for zen/op
         session {}]
-    (if-let [{op :op  params :params mw :middlewares :as route}
+    (if-let [{op :op  params :params mw :middlewares}
              (resolve-route ztx api-config path initial-ctx)]
-      (let [req*
-            (loop [mws mw
+      ;; apply inbound middlewares
+      (let [all-mws (map #(utils/resolve-mw ztx %) mw)
+            req*
+            (loop [mws (filter #(contains? (:dir %) :in)
+                               all-mws)
                    req (assoc req :route-params params)]
-              (let [{:keys [dir] :as mw-cfg} (resolve-mw ztx (first mws))]
-                (cond
-                  (empty? mws) req
-              ;; TODO add error if middleware not found?
-                  (nil? mw-cfg) (recur (rest mws) req)
-                  (or (nil? dir) (contains? dir :in))
-                  (let [patch (middleware-in ztx mw-cfg req)]
-                    (if-let [resp (::response patch)]
-                      resp
-                      (recur (rest mws)
-                             (if (map? patch)
-                               (utils/deep-merge req patch)
-                               req))))
-                  :else (recur (rest mws) req))))
+              (if (empty? mws)
+                req
+                (let [patch (middleware-in ztx (first mws) req)]
+                  (if-let [resp (::response patch)]
+                    resp
+                    (recur (rest mws)
+                           (if (map? patch)
+                             (utils/deep-merge req patch)
+                             req))))))
 
+            ;; call the handler if needed
             resp
             (if (:status req*)
               req*
               (zen/op-call ztx op req* session))]
 
-        (reduce (fn [resp* mw-symbol]
-                  (let [{:keys [dir] :as mw-cfg} (resolve-mw ztx mw-symbol)]
-                    (cond
-                      ;; TODO impl ::response for outcoming mw
-                      (nil? mw-cfg) resp*
-                      (or (nil? dir) (contains? dir :out))
-                      (utils/deep-merge resp* (middleware-out ztx mw-cfg req* resp*))
-                      :else resp*)))
+        ;; apply outbound middlewares
+        (loop [mws (filter #(contains? (:dir %) :out)
+                           all-mws)
+               resp resp]
+          (if (empty? mws)
+            resp
+            (let [patch (middleware-out ztx (first mws) req resp)]
+              (if-let [resp (::response patch)]
                 resp
-                mw))
+                (recur (rest mws)
+                       (if (map? patch)
+                         (utils/deep-merge resp patch)
+                         resp)))))))
+
       {:status 404 :body "route not found"})))
 
-;; TODO format response, parse body
+;; TODO format response
 (defn handle [ztx api-symbol {:keys [request-method headers] :as request}]
   (let [method-override (and (= :post request-method) (get headers "x-http-method-override"))
         parsed-request
@@ -165,6 +170,8 @@
     (if (= :options request-method)
       {:status 200
        :headers
+       ;; TODO refer to https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+       ;; set headers accordingly
        {"Access-Control-Allow-Headers" (get headers "access-control-request-headers")
         "Access-Control-Allow-Methods" (get headers "access-control-request-method")
         "Access-Control-Allow-Origin" (get headers "origin")
@@ -189,11 +196,19 @@
   (when-let [srv (:server state)]
     (srv)))
 
+(defn merge-unset [acc v]
+  (if (map? acc)
+    (utils/deep-merge acc v)
+    v))
+
 (defmethod zen/op 'zen.http.engines/response
-  [ztx config req & args]
-  (cond-> (:response config)
-    (keyword? (:select config))
-    (assoc :body (str (get req (:select config))))))
+  [ztx {:keys [select response] :as cfg} req & args]
+  (cond-> response
+    (vector? select)
+    (update :body merge-unset (select-keys req select))
+
+    (keyword? select)
+    (update :body merge-unset (get req select))))
 
 (defmethod zen/op 'zen.http.engines/redirect
   [ztx {:keys [to]} req & args]

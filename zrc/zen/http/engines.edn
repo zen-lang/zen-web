@@ -4,6 +4,8 @@
  {:zen/tags #{zen/tag zen/schema}
   :zen/desc "tag for middleware engine"
   :type zen/map
+  :require #{:dir}
+  ;; TODO change to enum
   :keys {:dir {:type zen/set :every {:type zen/keyword}}}}
 
  op
@@ -14,6 +16,7 @@
  {:zen/tags #{middleware zen/schema}
   :zen/desc "executes all mws one by one"
   :type zen/map
+  :dir #{:in :out}
   :keys {:mws {:type zen/vector
                :every {:type zen/symbol
                        :tags #{zen.http/middleware}}}}}
@@ -40,5 +43,9 @@
  {:zen/tags #{op zen/schema}
   :type zen/map
   :keys {:response {:type zen/map
-                    :values {:type zen/any}}
-         :select {:type zen/keyword}}}}
+                    :validation-type :open
+                    :keys {:status {:type zen/integer}
+                           :body {:validation-type :open}}}
+         :select {:type zen/case
+                  :case [{:when {:type zen/keyword}}
+                         {:when {:type zen/vector}}]}}}}

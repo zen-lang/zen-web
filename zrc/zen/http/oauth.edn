@@ -26,11 +26,16 @@
                      :every {:type zen/symbol
                              :tags #{provider}}}
          :zen/bind {:type zen/symbol :tags #{zen/binding}}
-         :public {:type zen/vector :every {:type zen/string}}
+         :public {:zen/desc "vector of public endpoints"
+                  :type zen/vector
+                  :every {:type zen/string}}
          ;; TODO add uri regex
-         :base-uri {:type zen/string}
-         :cookie {:type zen/string}
-         :secret {:type zen/string}}}
+         :base-uri {:zen/desc "application base uri for oauth redirects"
+                    :type zen/string}
+         :cookie {:zen/desc "cookie name for JWT"
+                  :type zen/string}
+         :secret {:zen/desc "secret string for JWT HMAC sig"
+                  :type zen/string}}}
 
  config-binding
  {:zen/tags #{zen/tag zen/binding}

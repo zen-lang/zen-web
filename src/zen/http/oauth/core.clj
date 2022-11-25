@@ -45,9 +45,10 @@
         (assoc :email primary-email))))
 
 (defn callback
+  {:zen/tags #{'zen/op}}
   [ztx cfg {{:keys [provider-id]} :route-params
             {:keys [code state]} :query-params
-            {:keys [providers base-uri secret] :as config} ::config} & opts]
+            {:keys [providers base-uri secret]} :config} & opts]
   ;; TODO process logical errors like redirect_uri mismatch
   (let [{:keys [token-endpoint organizations org-endpoint]
          :as provider}
@@ -109,9 +110,10 @@
                       "] organizations. But only [" (str/join "," user-orgs) "]")})))))
 
 (defn redirect
+  {:zen/tags #{'zen/op}}
   [ztx cfg {{:keys [provider-id]} :route-params
             {:keys [state]} :query-params
-            {:keys [providers base-uri]} ::config} & opts]
+            {:keys [providers base-uri]} :config} & opts]
   ;; redirect to provider auth endpoint based on the provider configuration
   (let [{:keys [authorize-endpoint redirect-uri] :as prov} (get providers provider-id)
         params
@@ -136,31 +138,48 @@
                "cache-control" "no-cache, no-store, max-age=0, must-revalidate"
                "pragma" "no-cache"}}))
 
-(defn verify-jwt [ztx {config-sym :config} {:keys [cookies uri] :as req}]
+(defn uri-split [uri]
+  (->> (clojure.string/split uri #"/")
+       (filter #(not (empty? %)))))
+
+(defn match-uri
+  "match left uri to right uri"
+  [[fl & rl] [fr & rr]]
+  (cond
+    (and (nil? fl) fr) false
+    (and (nil? fr) fl) false
+    (and (nil? fl) (nil? fr)) true
+    (and (= "*" fl) fr) true
+    (= fl fr) (match-uri rl rr)))
+
+(defn verify-jwt
+  {:zen/tags #{'zen.http/middleware}}
+  [ztx {config-sym :config} {:keys [cookies uri] :as req}]
   (let [{:keys [secret cookie public]} (zen/get-symbol ztx config-sym)
-        public-uris (map re-pattern public)
-        ;; TODO remove regexes impl
         public?
-        (->> public-uris
-             (map #(re-matches % uri))
-             (filter identity)
-             (not-empty))]
+        (->> public
+             (map #(uri-split %))
+             (filter #(match-uri % (uri-split uri)))
+             not-empty)]
     (when-not public?
       (if-let [token (get-in cookies [cookie :value])]
-        (let [jwt (try (jwt/parse token)
-                   ;; TODO think about this exception
-                       (catch Exception _e
-                         (throw (ex-info "Wrong token" {:status 403} _e))))]
-          (if (jwt/verify jwt secret)
-            {:user (:claims jwt)}
-            {:zen.http.core/response (auth-redirect req)}))
+        ;; json parser may fail with an exception :(
+        (let [{:keys [::response] :as jwt}
+              (try (jwt/parse token)
+                   (catch Exception ex
+                     {::response {:status 403 :body (ex-message ex)}}))]
+          (cond
+            response {:zen.http.core/response response}
+            (and jwt (jwt/verify jwt secret)) {:user (:claims jwt)}
+            :else {:zen.http.core/response (auth-redirect req)}))
         {:zen.http.core/response (auth-redirect req)}))))
 
 (defn snap-config
   "mount oauth configuration for handler ops"
+  {:zen/tags #{'zen.http/middleware}}
   [ztx {config-sym :config} {:keys [cookies uri] :as req}]
-  {::config (update (zen/get-symbol ztx config-sym)
-                    :providers
-                    (fn [provs]
-                      (->> (map #(zen/get-symbol ztx %) provs)
-                           (reduce (fn [acc p] (assoc acc (:name p) p)) {}))))})
+  {:config (update (zen/get-symbol ztx config-sym)
+                   :providers
+                   (fn [provs]
+                     (->> (map #(zen/get-symbol ztx %) provs)
+                          (reduce (fn [acc p] (assoc acc (:name p) p)) {}))))})

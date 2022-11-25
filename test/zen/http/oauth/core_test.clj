@@ -58,7 +58,7 @@
      :base-uri "http://127.0.0.1.nip.io:8789"
      :cookie "token"
      :secret "secret-string"
-     :public ["/public" "/auth" "/auth/.*"]}
+     :public ["/public" "/auth" "/auth/*"]}
 
     simple-response
     {:zen/tags #{zen/op zen.http/op}
@@ -95,8 +95,17 @@
    {:status 200}
    (http/handle ztx 'oauth.example/api {:request-method :get :uri "/public"}))
 
-  (http/handle ztx 'oauth.example/api {:request-method :get :uri "/private"
-                                       :headers {"Authorization" "Bearer 123"}})
+  (testing "various incorrect auth cookies"
+
+    (matcho/assert
+     {:status 302}
+     (http/handle ztx 'oauth.example/api {:request-method :get :uri "/private"
+                                          :headers {"cookie" "token=simple-string"}}))
+
+    (matcho/assert
+     {:status 403 :body #"Unexpected character"}
+     (http/handle ztx 'oauth.example/api {:request-method :get :uri "/private"
+                                          :headers {"cookie" "token=not.a.jwt"}})))
 
   (matcho/assert
    {:status 302
@@ -107,7 +116,7 @@
    (http/handle ztx 'oauth.example/api {:request-method :get :uri "/private"}))
 
   (defmethod zen/op 'zen.http.oauth/index
-    [ztx cfg {{:keys [providers]} :zen.http.oauth.core/config} & opts]
+    [ztx cfg {{:keys [providers]} :config} & opts]
     {:status 200
      :body (keys providers)})
 

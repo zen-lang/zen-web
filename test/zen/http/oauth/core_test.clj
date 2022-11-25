@@ -17,16 +17,15 @@
 
     google
     {:zen/tags #{zen.http.oauth/provider}
+     :id "google"
      :client-id "my-client-id"
      :client-secret "my-client-secret"
+     :authorize-endpoint       "https://accounts.google.com/o/oauth2/v2/auth"
      :href "/auth/google"
-     :redirect-uri "/auth/callback/google"
      :scopes         ["https://www.googleapis.com/auth/userinfo.profile"
                       "https://www.googleapis.com/auth/userinfo.email"]
      :userinfo-endpoint   "https://www.googleapis.com/oauth2/v1/userinfo"
      :token-endpoint      "https://www.googleapis.com/oauth2/v4/token"
-     :authorize-endpoint       "https://accounts.google.com/o/oauth2/v2/auth"
-     :name "google"
      :display "Google"
      :system "https://google.com"
 
@@ -34,20 +33,17 @@
 
     github
     {:zen/tags #{zen.http.oauth/provider}
+     :id "github"
      :client-id "my-client-id-1"
      :client-secret "my-client-secret-1"
+     :authorize-endpoint  "https://github.com/login/oauth/authorize"
      :href "/auth/github"
-     :redirect-uri "/auth/callback/github"
      :organizations ["my2ndOrg"]
-     :scopes         ["user" "read:org"]
-     :name "github"
+     :scopes ["user" "read:org" "repo"]
      :display "Github"
      :system "https://github.com"
      :userinfo-endpoint   "https://api.github.com/user"
      :token-endpoint      "https://github.com/login/oauth/access_token"
-     :authorize-endpoint  "https://github.com/login/oauth/authorize"
-
-     :additional-scopes ["repo"]
      :org-endpoint "https://api.github.com/user/orgs"
      :user-email-endpoint "https://api.github.com/user/emails"}
 
@@ -128,6 +124,11 @@
    (http/handle ztx 'oauth.example/api {:request-method :get :uri "/auth"}))
 
   ;; redirects to provider
+
+  (matcho/assert
+   {:status 404 :body {:message "provider not-found not found"}}
+   (http/handle ztx 'oauth.example/api {:request-method :get :uri "/auth/not-found"}))
+
   (matcho/assert
    {:status 302 :headers {"location" #"accounts.google.com"}}
    (http/handle ztx 'oauth.example/api {:request-method :get :uri "/auth/google"})))

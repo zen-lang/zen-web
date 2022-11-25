@@ -44,29 +44,31 @@
              primary-email)
         (assoc :email primary-email))))
 
-(defn callback
-  {:zen/tags #{'zen/op}}
-  [ztx cfg {{:keys [provider-id]} :route-params
-            {:keys [code state]} :query-params
-            {:keys [providers base-uri secret]} :config} & opts]
-  ;; TODO process logical errors like redirect_uri mismatch
-  (let [{:keys [token-endpoint organizations org-endpoint]
-         :as provider}
-        (get providers provider-id)
-
-        ;; exchange auth code for access token
-        params {:client_id (:client-id provider)
-                :client_secret (:client-secret provider)
-                :redirect_uri (str base-uri (:redirect-uri provider))
+(defn get-access-token
+  "exchange auth code for access token"
+  [code {:keys [base-uri provider-id token-endpoint client-id client-secret]}]
+  (let [params {:client_id client-id
+                :client_secret client-secret
+                :redirect_uri (str base-uri "/auth/callback/" provider-id)
                 :grant_type "authorization_code"
                 :code code}
 
         req  {:accept :json
               :form-params params
               :throw-exceptions false
-              :content-type :x-www-form-urlencoded}
+              :content-type :x-www-form-urlencoded}]
 
-        resp (client/post token-endpoint req)]
+    (client/post token-endpoint req)))
+
+(defn callback
+  {:zen/tags #{'zen/op}}
+  [ztx cfg {{:keys [provider-id]} :route-params
+            {:keys [code state]} :query-params
+            {:keys [providers cookie secret]} :config} & opts]
+  ;; TODO process logical errors like redirect_uri mismatch
+  (let [{:keys [organizations org-endpoint] :as provider} (get providers provider-id)
+
+        resp (get-access-token code provider)]
 
     (if (> (:status resp) 399)
       {:status 403
@@ -82,6 +84,7 @@
              :throw-exceptions false
              :headers {"Authorization" (str "Bearer " (:access_token token))}}
 
+            ;; TODO test organization_notice behaviour
             user-orgs
             (when (and (not-empty organizations) org-endpoint)
               (->> (-> org-endpoint
@@ -92,7 +95,7 @@
                    (into #{})))
 
             jwt (merge {:token token
-                        :provider (select-keys provider [:name :system])
+                        :provider (select-keys provider [:id :system])
                         :userinfo userinfo
                         :user-orgs user-orgs}
                        (select-keys userinfo [:email :url :name]))]
@@ -101,31 +104,33 @@
         (if (clojure.set/intersection (set organizations) user-orgs)
           {:status 302
            :headers {"location" (decode64 state)}
-           :cookies {"token" {:value (jwt/sign secret jwt :HS256)
-                              :max-age 31536000
-                              :path "/"}}}
+           :cookies {cookie {:value (jwt/sign secret jwt :HS256)
+                             :max-age 31536000
+                             :path "/"}}}
 
           {:status 403
            :body (str "You should be member of [" (str/join "," organizations)
                       "] organizations. But only [" (str/join "," user-orgs) "]")})))))
 
 (defn redirect
+  "redirect to ext provider initial oauth endpoint"
   {:zen/tags #{'zen/op}}
   [ztx cfg {{:keys [provider-id]} :route-params
             {:keys [state]} :query-params
             {:keys [providers base-uri]} :config} & opts]
-  ;; redirect to provider auth endpoint based on the provider configuration
-  (let [{:keys [authorize-endpoint redirect-uri] :as prov} (get providers provider-id)
-        params
-        (cond-> {:response_type "code"
-                 :scope (str/join " " (concat (:scopes prov) (:additional-scopes prov)))
-                 :client_id (get-in prov [:client-id])
-                 :redirect_uri (str base-uri redirect-uri)}
-          (not (nil? state)) (assoc :state state))]
-    {:status 302
-     :headers {"location" (str authorize-endpoint "?" (ring.util.codec/form-encode params))
-               "cache-control" "no-cache, no-store, max-age=0, must-revalidate"
-               "pragma" "no-cache"}}))
+  (if-let [{:keys [authorize-endpoint scopes client-id]} (get providers provider-id)]
+    (let [params
+          (cond-> {:response_type "code"
+                   :scope (str/join " " scopes)
+                   :client_id client-id
+                   :redirect_uri (str base-uri "/auth/callback/" provider-id)}
+            (not (nil? state)) (assoc :state state))]
+      {:status 302
+       :headers {"location" (str authorize-endpoint "?" (ring.util.codec/form-encode params))
+                 "cache-control" "no-cache, no-store, max-age=0, must-revalidate"
+                 "pragma" "no-cache"}})
+    {:status 404
+     :body {:message (str "provider " provider-id " not found")}}))
 
 (defn encode64 [s]
   (when-not (str/blank? (str s))
@@ -139,8 +144,8 @@
                "pragma" "no-cache"}}))
 
 (defn uri-split [uri]
-  (->> (clojure.string/split uri #"/")
-       (filter #(not (empty? %)))))
+  (->> (str/split uri #"/")
+       (remove str/blank?)))
 
 (defn match-uri
   "match left uri to right uri"
@@ -177,9 +182,9 @@
 (defn snap-config
   "mount oauth configuration for handler ops"
   {:zen/tags #{'zen.http/middleware}}
-  [ztx {config-sym :config} {:keys [cookies uri] :as req}]
+  [ztx {config-sym :config} req]
   {:config (update (zen/get-symbol ztx config-sym)
                    :providers
                    (fn [provs]
                      (->> (map #(zen/get-symbol ztx %) provs)
-                          (reduce (fn [acc p] (assoc acc (:name p) p)) {}))))})
+                          (reduce (fn [acc p] (assoc acc (:id p) p)) {}))))})

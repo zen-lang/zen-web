@@ -6,16 +6,19 @@
  provider
  {:zen/tags #{zen/tag zen/schema}
   :type zen/map
-  :require #{:client-id :client-secret}
+  :require #{:client-id :client-secret :authorize-endpoint :scopes :id}
   :validation-type :open
-  :keys {:client-id {:type zen/string}
+  :keys {:id {:zen/desc "provider id to use in uris"
+              :type zen/string}
+         :client-id {:type zen/string}
          :client-secret {:type zen/string}
          :userinfo-endpoint {:type zen/string}
          :token-endpoint {:type zen/string}
-         :authorize-endpoint {:type zen/string}
-         ;; TODO add redirect_uri??
+         :authorize-endpoint {:zen/desc "provider's initial oauth endpoint"
+                              :type zen/string}
          ;; TODO add provider-specific configuration w schema-key?
          :scopes {:type zen/vector
+                  :minItems 1
                   :every {:type zen/string}}}}
 
  config

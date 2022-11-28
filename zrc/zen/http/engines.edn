@@ -12,6 +12,15 @@
  {:zen/tags #{zen/tag zen/schema}
   :type zen/map}
 
+ one-of
+ {:zen/tags #{middleware zen/schema}
+  :zen/desc "execute mws with logical or"
+  :type zen/map
+  :dir #{:in}
+  :keys {:mws {:type zen/vector
+               :every {:type zen/symbol
+                       :tags #{zen.http/middleware}}}}}
+
  all-of
  {:zen/tags #{middleware zen/schema}
   :zen/desc "executes all mws one by one"

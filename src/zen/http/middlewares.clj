@@ -119,38 +119,53 @@
                         (codec/form-encode {k v})))))]
       (assoc-in resp [:headers "Set-Cookie"] (vec http-cookies)))))
 
+(defn reduce-mw [apply-fn acc mws-in]
+  (loop [mws mws-in
+         acc acc]
+    (if (empty? mws)
+      acc
+      (let [patch (apply-fn acc (first mws))]
+        (if-let [resp (:zen.http.core/response patch)]
+          resp
+          (recur (rest mws)
+                 (if (map? patch)
+                   (utils/deep-merge acc patch)
+                   acc)))))))
+
 (defn all-of-in [ztx {:keys [mws]} req]
   (let [mws-in (->> mws
                     (map #(utils/resolve-mw ztx %))
-                    (filter #(contains? (:dir %) :in)))]
-    (loop [mws mws-in
-           req req]
-      (if (empty? mws)
-        req
-        ;; avoid transitive dep
-        (let [method-fn (ns-resolve (find-ns 'zen.http.core) 'middleware-in)
-              patch (method-fn ztx (first mws) req)]
-          (if-let [resp (:zen.http.core/response patch)]
-            resp
-            (recur (rest mws)
-                   (if (map? patch)
-                     (utils/deep-merge req patch)
-                     req))))))))
+                    (filter #(contains? (:dir %) :in)))
+        apply-fn
+        (fn [req* config]
+          ((ns-resolve (find-ns 'zen.http.core) 'middleware-in) ztx config req*))]
+
+    (reduce-mw apply-fn req mws-in)))
 
 (defn all-of-out [ztx {:keys [mws]} req resp]
   (let [mws-out (->> mws
                      (map #(utils/resolve-mw ztx %))
-                     (filter #(contains? (:dir %) :out)))]
-    (loop [mws mws-out
-           resp resp]
-      (if (empty? mws)
-        resp
-        ;; avoid transitive dep
-        (let [method-fn (ns-resolve (find-ns 'zen.http.core) 'middleware-out)
-              patch (method-fn ztx (first mws) req resp)]
-          (if-let [resp (:zen.http.core/response patch)]
-            resp
-            (recur (rest mws)
-                   (if (map? patch)
-                     (utils/deep-merge resp patch)
-                     resp))))))))
+                     (filter #(contains? (:dir %) :out)))
+        apply-fn
+        (fn [resp* config]
+          ((ns-resolve (find-ns 'zen.http.core) 'middleware-out) ztx config req resp*))]
+
+    (reduce-mw apply-fn resp mws-out)))
+
+(defn one-of [ztx {:keys [mws]} req]
+  (loop [mws (->> mws
+                  (map #(utils/resolve-mw ztx %))
+                  (filter #(contains? (:dir %) :in)))
+         resp nil
+         req req]
+    (if (empty? mws)
+      (if (nil? resp)
+        {:status 403 :body {:message (str "one of mws " mws " must pass")}}
+        resp)
+      (let [patch ((ns-resolve (find-ns 'zen.http.core) 'middleware-in) ztx (first mws) req)]
+        (if-let [resp (:zen.http.core/response patch)]
+          (recur (rest mws)
+                 resp
+                 (utils/deep-merge req (dissoc patch :zen.http.core/response)))
+          (if (map? patch)
+            (utils/deep-merge req patch)))))))

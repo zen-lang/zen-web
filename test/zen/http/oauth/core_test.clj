@@ -12,8 +12,8 @@
 (def pth (str (System/getProperty "user.dir") "/docs"))
 
 (def system-ns
-  '{ns oauth.example
-    import #{zen.http zen.http.oauth}
+  '{:ns oauth.example
+    :import #{zen.http zen.http.oauth}
 
     google
     {:zen/tags #{zen.http.oauth/provider}
@@ -28,8 +28,7 @@
      :token-endpoint      "https://www.googleapis.com/oauth2/v4/token"
      :display "Google"
      :system "https://google.com"
-
-     :organizations-notice ["myOrg"]}
+     :organizations ["myOrg"]}
 
     github
     {:zen/tags #{zen.http.oauth/provider}
@@ -54,21 +53,37 @@
      :base-uri "http://127.0.0.1.nip.io:8789"
      :cookie "token"
      :secret "secret-string"
-     :public ["/public" "/auth" "/auth/*"]}
+     :public ["/public"]}
 
     simple-response
     {:zen/tags #{zen/op zen.http/op}
      :engine zen.http.engines/response
      :response {:status 200}}
 
+    basic-auth
+    {:zen/tags #{zen.http/middleware}
+     :engine zen.http.engines/basic-auth
+     :user "john"
+     :password "milton"}
+
+    oauth-or-basic
+    {:zen/tags #{zen/op zen.http/middleware}
+     :engine zen.http.engines/one-of
+     :mws [basic-auth zen.http.oauth/verify-jwt]}
+
     api
     {:zen/tags #{zen.http/api}
      :engine zen.http/routemap
      :apis [zen.http.oauth/api]
      :mw [zen.http/defaults
-          zen.http.oauth/verify-jwt]
+          oauth-or-basic]
      "public" {:GET simple-response}
      "private" {:GET simple-response}}})
+
+(defmethod zen/op 'zen.http.oauth/index
+  [ztx cfg {{:keys [providers]} :config} & opts]
+  {:status 200
+   :body (keys providers)})
 
 (defn prepare! []
   (def ztx (zen/new-context {:zd/paths [pth] :paths [pth]}))
@@ -110,11 +125,6 @@
      "cache-control" "no-cache, no-store, max-age=0, must-revalidate"
      "pragma" "no-cache"}}
    (http/handle ztx 'oauth.example/api {:request-method :get :uri "/private"}))
-
-  (defmethod zen/op 'zen.http.oauth/index
-    [ztx cfg {{:keys [providers]} :config} & opts]
-    {:status 200
-     :body (keys providers)})
 
 ;; providers list
   (matcho/assert

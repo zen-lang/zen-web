@@ -64,6 +64,10 @@
   [ztx cfg req resp & args]
   (mw/all-of-out ztx cfg req resp))
 
+(defmethod middleware-in 'zen.http.engines/one-of
+  [ztx cfg req & args]
+  (mw/one-of ztx cfg req))
+
 (defmulti resolve-route
   (fn [_ztx cfg _path {_params :params _mws :middlewares _pth :path}]
     (zen/engine-or-name cfg)))
@@ -117,25 +121,18 @@
 (defn dispatch [ztx comp-symbol {uri :uri meth :request-method :as req}]
   (let [api-config (zen/get-symbol ztx comp-symbol)
         path (conj (rm/pathify uri) (-> (or meth :get) name str/upper-case keyword))
-        ;; TODO understand if we need session param for zen/op
+        ;; TODO we need session param for zen/op?
         session {}]
     (if-let [{op :op  params :params mw :middlewares}
              (resolve-route ztx api-config path initial-ctx)]
-      ;; apply inbound middlewares
       (let [all-mws (map #(utils/resolve-mw ztx %) mw)
+            ;; apply inbound middlewares
             req*
-            (loop [mws (filter #(contains? (:dir %) :in)
-                               all-mws)
-                   req (assoc req :route-params params)]
-              (if (empty? mws)
-                req
-                (let [patch (middleware-in ztx (first mws) req)]
-                  (if-let [resp (::response patch)]
-                    resp
-                    (recur (rest mws)
-                           (if (map? patch)
-                             (utils/deep-merge req patch)
-                             req))))))
+            (mw/reduce-mw (fn [req* config]
+                            (middleware-in ztx config req*))
+                          (assoc req :route-params params)
+                          (filter #(contains? (:dir %) :in)
+                                  all-mws))
 
             ;; call the handler if needed
             resp
@@ -144,18 +141,11 @@
               (zen/op-call ztx op req* session))]
 
         ;; apply outbound middlewares
-        (loop [mws (filter #(contains? (:dir %) :out)
-                           all-mws)
-               resp resp]
-          (if (empty? mws)
-            resp
-            (let [patch (middleware-out ztx (first mws) req resp)]
-              (if-let [resp (::response patch)]
-                resp
-                (recur (rest mws)
-                       (if (map? patch)
-                         (utils/deep-merge resp patch)
-                         resp)))))))
+        (mw/reduce-mw (fn [resp* config]
+                        (middleware-out ztx config req resp*))
+                      resp
+                      (filter #(contains? (:dir %) :out)
+                              all-mws)))
 
       {:status 404 :body "route not found"})))
 

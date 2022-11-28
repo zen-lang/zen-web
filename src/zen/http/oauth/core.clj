@@ -162,7 +162,7 @@
   [ztx {config-sym :config} {:keys [cookies uri] :as req}]
   (let [{:keys [secret cookie public]} (zen/get-symbol ztx config-sym)
         public?
-        (->> public
+        (->> (into public ["/auth" "/auth/*"])
              (map #(uri-split %))
              (filter #(match-uri % (uri-split uri)))
              not-empty)]

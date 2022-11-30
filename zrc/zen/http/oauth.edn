@@ -71,7 +71,7 @@
  api
  {:zen/tags #{zen.http/api zen/tag zen.http.oauth/api}
   :engine zen.http/routemap
-  :mw [snap-config]
+  :mw [snap-config verify-jwt]
   "auth" {:GET index
           "callback" {[:provider-id] {:GET callback}}
           [:provider-id] {:GET redirect}}}}

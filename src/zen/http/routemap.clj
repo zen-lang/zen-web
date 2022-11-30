@@ -38,9 +38,14 @@
               {node-mws :mw :as node}
               [x & rpath :as path]
               {params :params mws :middlewares :as ctx}]
-  (let [ctx (cond-> ctx
-               ;; TODO refactor this
-              node-mws (update :middlewares (fn [x] (into (or x []) node-mws))))
+  (let [apis-mws (->> (:apis node)
+                      (map #(zen/get-symbol ztx %))
+                      (map :mw)
+                      (apply concat))
+        ctx (cond-> ctx
+              node-mws (update :middlewares
+                               (fnil into [])
+                               (concat node-mws apis-mws)))
         next-node (get node x)]
     (cond (and (empty? path)
                (symbol? node))
@@ -133,5 +138,3 @@
 
 (defn *routes [ztx cfg ctx]
   (routes ztx cfg (update ctx :by conj (:zen/name cfg))))
-
-

@@ -21,7 +21,6 @@
      :client-id "my-client-id"
      :client-secret "my-client-secret"
      :authorize-endpoint       "https://accounts.google.com/o/oauth2/v2/auth"
-     :href "/auth/google"
      :scopes         ["https://www.googleapis.com/auth/userinfo.profile"
                       "https://www.googleapis.com/auth/userinfo.email"]
      :userinfo-endpoint   "https://www.googleapis.com/oauth2/v1/userinfo"
@@ -36,7 +35,6 @@
      :client-id "my-client-id-1"
      :client-secret "my-client-secret-1"
      :authorize-endpoint  "https://github.com/login/oauth/authorize"
-     :href "/auth/github"
      :organizations ["my2ndOrg"]
      :scopes ["user" "read:org" "repo"]
      :display "Github"
@@ -66,17 +64,11 @@
      :user "john"
      :password "milton"}
 
-    oauth-or-basic
-    {:zen/tags #{zen/op zen.http/middleware}
-     :engine zen.http.engines/one-of
-     :mws [basic-auth zen.http.oauth/verify-jwt]}
-
     api
     {:zen/tags #{zen.http/api}
      :engine zen.http/routemap
      :apis [zen.http.oauth/api]
-     :mw [zen.http/defaults
-          oauth-or-basic]
+     :mw [zen.http/defaults]
      "public" {:GET simple-response}
      "private" {:GET simple-response}}})
 
@@ -101,13 +93,12 @@
 
   (prepare!)
 
-;; whitelist works
-  (matcho/assert
-   {:status 200}
-   (http/handle ztx 'oauth.example/api {:request-method :get :uri "/public"}))
+  (testing "whitelist from oauth-config works"
+    (matcho/assert
+     {:status 200}
+     (http/handle ztx 'oauth.example/api {:request-method :get :uri "/public"})))
 
-  (testing "various incorrect auth cookies"
-
+  (testing "incorrect auth cookies"
     (matcho/assert
      {:status 302}
      (http/handle ztx 'oauth.example/api {:request-method :get :uri "/private"
@@ -126,19 +117,28 @@
      "pragma" "no-cache"}}
    (http/handle ztx 'oauth.example/api {:request-method :get :uri "/private"}))
 
-;; providers list
-  (matcho/assert
-   {:status 200
-    :body ["google" "github"]}
-   ;; TODO test that providers are rendered
-   (http/handle ztx 'oauth.example/api {:request-method :get :uri "/auth"}))
 
-  ;; redirects to provider
+  (testing "providers list is returned"
+    (matcho/assert
+    {:status 200
+     :body ["google" "github"]}
+    ;; TODO test that providers are rendered
+    (http/handle ztx 'oauth.example/api {:request-method :get :uri "/auth"})))
 
-  (matcho/assert
-   {:status 404 :body {:message "provider not-found not found"}}
-   (http/handle ztx 'oauth.example/api {:request-method :get :uri "/auth/not-found"}))
+  (testing "redirect is done"
+    (matcho/assert
+     {:status 404 :body {:message "provider not-found not found"}}
+     (http/handle ztx 'oauth.example/api {:request-method :get :uri "/auth/not-found"}))
 
-  (matcho/assert
-   {:status 302 :headers {"location" #"accounts.google.com"}}
-   (http/handle ztx 'oauth.example/api {:request-method :get :uri "/auth/google"})))
+    (matcho/assert
+     {:status 302 :headers {"location" #"accounts.google.com"}}
+     (http/handle ztx 'oauth.example/api {:request-method :get :uri "/auth/google"})))
+
+  (testing "callback returns error"
+    (matcho/assert
+     {:status 403,
+      :body {:message "auth callback error"
+             :error "redirect_uri_mismatch"}}
+     (http/handle ztx 'oauth.example/api {:request-method :get
+                                          :uri "/auth/callback/github"
+                                          :query-string "error=redirect_uri_mismatch"}))))

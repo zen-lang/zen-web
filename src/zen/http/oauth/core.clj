@@ -13,43 +13,62 @@
        (.decode (java.util.Base64/getDecoder))
        String.))
 
-(defn get-userinfo [provider token]
+(defn get-userinfo [{:keys [userinfo-endpoint user-email-endpoint org-endpoint]
+                     orgs :organizations}
+                    token]
   (let [info
-          (-> (:userinfo-endpoint provider)
+        (-> userinfo-endpoint
+            (client/get {:accept :json
+                         :headers {"Authorization" (str "Bearer " token)}
+                         :throw-exceptions false})
+            :body
+            (json/parse-string keyword))
+
+        email-info
+        (when user-email-endpoint
+          (-> user-email-endpoint
               (client/get {:accept :json
-                           :headers {"Authorization" (str "Bearer " token)}
-                           :throw-exceptions false})
+                           :throw-exceptions false
+                           :headers {"Authorization" (str "Bearer " token)}})
               :body
-              (json/parse-string keyword))
+              (json/parse-string keyword)))
 
-          email-info
-          (when-let [email-endpoint (:user-email-endpoint provider)]
-            (-> email-endpoint
-                (client/get {:accept :json
-                             :throw-exceptions false
-                             :headers {"Authorization" (str "Bearer " token)}})
-                :body
-                (json/parse-string keyword)))
+        primary-email (->> email-info
+                           (filter :primary)
+                           first
+                           :email)
 
-          primary-email (->> email-info
-                             (filter :primary)
-                             first
-                             :email)]
+        req-opts
+        {:accept :json
+         :throw-exceptions false
+         :headers {"Authorization" (str "Bearer " (:access_token token))}}
 
-      (cond-> info
-        (not-empty email-info)
-        (assoc :email-info email-info)
+        user-orgs
+        (when (and (not-empty orgs) org-endpoint)
+          (->> (-> org-endpoint
+                   (client/get req-opts)
+                   :body
+                   (json/parse-string keyword))
+               (map :login)
+               (into #{})))]
 
-        (and (not (:email info))
-             primary-email)
-        (assoc :email primary-email))))
+    (cond-> info
+      (not-empty email-info)
+      (assoc :email-info email-info)
+
+      (and (not (:email info))
+           primary-email)
+      (assoc :email primary-email)
+
+      user-orgs
+      (assoc :user-orgs user-orgs))))
 
 (defn get-access-token
   "exchange auth code for access token"
-  [code {:keys [base-uri provider-id token-endpoint client-id client-secret]}]
+  [base-uri code {:keys [id token-endpoint client-id client-secret]}]
   (let [params {:client_id client-id
                 :client_secret client-secret
-                :redirect_uri (str base-uri "/auth/callback/" provider-id)
+                :redirect_uri (str base-uri "/auth/callback/" id)
                 :grant_type "authorization_code"
                 :code code}
 
@@ -58,59 +77,49 @@
               :throw-exceptions false
               :content-type :x-www-form-urlencoded}]
 
+    ;; TODO remove clj-http
     (client/post token-endpoint req)))
 
 (defn callback
   {:zen/tags #{'zen/op}}
   [ztx cfg {{:keys [provider-id]} :route-params
-            {:keys [code state]} :query-params
-            {:keys [providers cookie secret]} :config} & opts]
-  ;; TODO process logical errors like redirect_uri mismatch
-  (let [{:keys [organizations org-endpoint] :as provider} (get providers provider-id)
+            {:keys [code state] :as qp} :query-params
+            {:keys [providers base-uri cookie secret]} :config :as req} & opts]
 
-        resp (get-access-token code provider)]
+  (if (:error qp)
+    {:status 403
+     :body (merge {:message "auth callback error"} qp)}
+    (let [{:keys [organizations] :as provider} (get providers provider-id)
 
-    (if (> (:status resp) 399)
-      {:status 403
-       :body "could not get auth token"}
+          resp (get-access-token base-uri code provider)]
 
-      (let [token (json/parse-string (:body resp) keyword)
+      (if (:error resp)
+        {:status 403
+         :body (merge {:message "access token req error"} resp)}
 
-            ;; get userinfo from provider api
-            userinfo (get-userinfo provider (:access_token token))
+        (let [token (json/parse-string (:body resp) keyword)
 
-            req-opts
-            {:accept :json
-             :throw-exceptions false
-             :headers {"Authorization" (str "Bearer " (:access_token token))}}
+              ;; get userinfo from provider api
+              {:keys [user-orgs] :as userinfo}
+              (get-userinfo provider (:access_token token))
 
-            ;; TODO test organization_notice behaviour
-            user-orgs
-            (when (and (not-empty organizations) org-endpoint)
-              (->> (-> org-endpoint
-                       (client/get req-opts)
-                       :body
-                       (json/parse-string keyword))
-                   (map :login)
-                   (into #{})))
+              jwt (merge {:token token
+                          :provider (select-keys provider [:id :system])
+                          :userinfo userinfo
+                          :user-orgs user-orgs}
+                         (select-keys userinfo [:email :url :name]))]
 
-            jwt (merge {:token token
-                        :provider (select-keys provider [:id :system])
-                        :userinfo userinfo
-                        :user-orgs user-orgs}
-                       (select-keys userinfo [:email :url :name]))]
+          ;; check that user belongs to desired orgs
+          (if (clojure.set/intersection (set organizations) user-orgs)
+            {:status 302
+             :headers {"location" (decode64 state)}
+             :cookies {cookie {:value (jwt/sign secret jwt :HS256)
+                               :max-age 31536000
+                               :path "/"}}}
 
-        ;; check that user belongs to desired orgs
-        (if (clojure.set/intersection (set organizations) user-orgs)
-          {:status 302
-           :headers {"location" (decode64 state)}
-           :cookies {cookie {:value (jwt/sign secret jwt :HS256)
-                             :max-age 31536000
-                             :path "/"}}}
-
-          {:status 403
-           :body (str "You should be member of [" (str/join "," organizations)
-                      "] organizations. But only [" (str/join "," user-orgs) "]")})))))
+            {:status 403
+             :body (str "You should be member of [" (str/join "," organizations)
+                        "] organizations. But only [" (str/join "," user-orgs) "]")}))))))
 
 (defn redirect
   "redirect to ext provider initial oauth endpoint"

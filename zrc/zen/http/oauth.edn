@@ -6,8 +6,10 @@
  provider
  {:zen/tags #{zen/tag zen/schema}
   :type zen/map
-  :require #{:client-id :client-secret :authorize-endpoint :scopes :id}
-  :validation-type :open
+  :require #{:client-id :client-secret
+             :authorize-endpoint :token-endpoint
+             :scopes :id
+             :userinfo-endpoint :system}
   :keys {:id {:zen/desc "provider id to use in uris"
               :type zen/string}
          :client-id {:type zen/string}
@@ -16,7 +18,13 @@
          :token-endpoint {:type zen/string}
          :authorize-endpoint {:zen/desc "provider's initial oauth endpoint"
                               :type zen/string}
-         ;; TODO add provider-specific configuration w schema-key?
+         :org-endpoint {:zen/desc "endpoint to fetch user organizations. optional"
+                        :type zen/string}
+         :display {:zen/desc "provider name for display"
+                   :type zen/string}
+         :system {:zen/desc "logical identity system"
+                  :type zen/string}
+         :user-email-endpoint {:zen/desc "uri to retrieve user email. optional"}
          :scopes {:type zen/vector
                   :minItems 1
                   :every {:type zen/string}}}}
@@ -29,6 +37,7 @@
                      :every {:type zen/symbol
                              :tags #{provider}}}
          :zen/bind {:type zen/symbol :tags #{zen/binding}}
+         :organizations {:zen/desc "list of user organizations"}
          :public {:zen/desc "vector of public endpoints"
                   :type zen/vector
                   :every {:type zen/string}}
@@ -41,9 +50,7 @@
                   :type zen/string}}}
 
  config-binding
- {:zen/tags #{zen/tag zen/binding}
-  ;; TODO implement interface check
-  #_:tags #_#{config}}
+ {:zen/tags #{zen/tag zen/binding}}
 
  index
  {:zen/tags #{zen/op zen.http/op}

@@ -26,8 +26,7 @@
      :userinfo-endpoint   "https://www.googleapis.com/oauth2/v1/userinfo"
      :token-endpoint      "https://www.googleapis.com/oauth2/v4/token"
      :display "Google"
-     :system "https://google.com"
-     :organizations ["myOrg"]}
+     :system "https://google.com"}
 
     github
     {:zen/tags #{zen.http.oauth/provider}
@@ -35,7 +34,6 @@
      :client-id "my-client-id-1"
      :client-secret "my-client-secret-1"
      :authorize-endpoint  "https://github.com/login/oauth/authorize"
-     :organizations ["my2ndOrg"]
      :scopes ["user" "read:org" "repo"]
      :display "Github"
      :system "https://github.com"
@@ -48,6 +46,7 @@
     {:zen/bind zen.http.oauth/config-binding
      :zen/tags #{zen.http.oauth/config}
      :providers [google github]
+     :organizations ["my2ndOrg"]
      :base-uri "http://127.0.0.1.nip.io:8789"
      :cookie "token"
      :secret "secret-string"

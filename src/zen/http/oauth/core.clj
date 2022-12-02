@@ -1,7 +1,7 @@
 (ns zen.http.oauth.core
   (:require
    [zen.http.oauth.jwt :as jwt]
-   [clojure.set]
+   [clojure.set :as set]
    [zen.core :as zen]
    [ring.util.codec]
    [clojure.string :as str]
@@ -13,9 +13,7 @@
        (.decode (java.util.Base64/getDecoder))
        String.))
 
-(defn get-userinfo [{:keys [userinfo-endpoint user-email-endpoint org-endpoint]
-                     orgs :organizations}
-                    token]
+(defn get-userinfo [{:keys [userinfo-endpoint user-email-endpoint org-endpoint]} token]
   (let [info
         (-> userinfo-endpoint
             (client/get {:accept :json
@@ -41,10 +39,10 @@
         req-opts
         {:accept :json
          :throw-exceptions false
-         :headers {"Authorization" (str "Bearer " (:access_token token))}}
+         :headers {"Authorization" (str "Bearer " token)}}
 
         user-orgs
-        (when (and (not-empty orgs) org-endpoint)
+        (when org-endpoint
           (->> (-> org-endpoint
                    (client/get req-opts)
                    :body
@@ -60,7 +58,7 @@
            primary-email)
       (assoc :email primary-email)
 
-      user-orgs
+      org-endpoint
       (assoc :user-orgs user-orgs))))
 
 (defn get-access-token
@@ -84,12 +82,12 @@
   {:zen/tags #{'zen/op}}
   [ztx cfg {{:keys [provider-id]} :route-params
             {:keys [code state] :as qp} :query-params
-            {:keys [providers base-uri cookie secret]} :config :as req} & opts]
-
+            {:keys [providers organizations base-uri cookie secret]} :config
+            :as req} & opts]
   (if (:error qp)
     {:status 403
      :body (merge {:message "auth callback error"} qp)}
-    (let [{:keys [organizations] :as provider} (get providers provider-id)
+    (let [provider (get providers provider-id)
 
           resp (get-access-token base-uri code provider)]
 
@@ -105,12 +103,12 @@
 
               jwt (merge {:token token
                           :provider (select-keys provider [:id :system])
-                          :userinfo userinfo
-                          :user-orgs user-orgs}
+                          :userinfo userinfo}
                          (select-keys userinfo [:email :url :name]))]
 
-          ;; check that user belongs to desired orgs
-          (if (clojure.set/intersection (set organizations) user-orgs)
+          ;; check that user belongs to desired orgs if needed
+          (if (or (nil? (:org-endpoint provider))
+                  (not-empty (set/intersection (set organizations) user-orgs)))
             {:status 302
              :headers {"location" (decode64 state)}
              :cookies {cookie {:value (jwt/sign secret jwt :HS256)

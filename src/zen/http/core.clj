@@ -56,6 +56,10 @@
   [ztx cfg req resp & args]
   (mw/set-cookies ztx cfg req resp))
 
+(defmethod middleware-out 'zen.http.engines/formats
+  [ztx cfg req resp & args]
+  (mw/formats ztx cfg req resp))
+
 (defmethod middleware-in 'zen.http.engines/all-of
   [ztx cfg req & args]
   (mw/all-of-in ztx cfg req))
@@ -149,7 +153,6 @@
 
       {:status 404 :body "route not found"})))
 
-;; TODO format response
 (defn handle [ztx api-symbol {:keys [request-method headers] :as request}]
   (let [method-override (and (= :post request-method) (get headers "x-http-method-override"))
         parsed-request

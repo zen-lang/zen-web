@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [ring.util.parsing :refer [re-token]]
    [clojure.walk :as walk]
+   [hiccup.core :as hiccup]
    [ring.util.codec :as codec]
    [ring.middleware.cookies :as cookies])
   (:import java.util.Base64))
@@ -107,6 +108,7 @@
         :else (str ";" attr-name "=" value)))))
 
 (defn set-cookies
+  {:zen/tags #{'zen.http/middleware}}
   [ztx cfg req resp]
   (when-let [cookies (:cookies resp)]
     (let [http-cookies
@@ -132,7 +134,9 @@
                    (utils/deep-merge acc patch)
                    acc)))))))
 
-(defn all-of-in [ztx {:keys [mws]} req]
+(defn all-of-in
+  {:zen/tags #{'zen.http/middleware}}
+  [ztx {:keys [mws]} req]
   (let [mws-in (->> mws
                     (map #(utils/resolve-mw ztx %))
                     (filter #(contains? (:dir %) :in)))
@@ -142,7 +146,9 @@
 
     (reduce-mw apply-fn req mws-in)))
 
-(defn all-of-out [ztx {:keys [mws]} req resp]
+(defn all-of-out
+  {:zen/tags #{'zen.http/middleware}}
+  [ztx {:keys [mws]} req resp]
   (let [mws-out (->> mws
                      (map #(utils/resolve-mw ztx %))
                      (filter #(contains? (:dir %) :out)))
@@ -152,7 +158,9 @@
 
     (reduce-mw apply-fn resp mws-out)))
 
-(defn one-of [ztx {:keys [mws]} req]
+(defn one-of
+  {:zen/tags #{'zen.http/middleware}}
+  [ztx {:keys [mws]} req]
   (loop [mws (->> mws
                   (map #(utils/resolve-mw ztx %))
                   (filter #(contains? (:dir %) :in)))
@@ -169,3 +177,13 @@
                  (utils/deep-merge req (dissoc patch :zen.http.core/response)))
           (if (map? patch)
             (utils/deep-merge req patch)))))))
+
+(defn formats
+  {:zen/tags #{'zen.http/middleware}}
+  [ztx {:keys [formats]} req resp]
+  (let [ct (get-in resp [:headers "Content-Type"])]
+    (cond
+      (and (contains? formats :html) ct (re-matches #"text/html" ct))
+      {:headers
+       {"Content-Type" "text/html; charset=utf-8"}
+       :body (hiccup/html (:body resp))})))

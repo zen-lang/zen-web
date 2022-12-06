@@ -8,6 +8,8 @@
         clj-commons/clj-yaml      {:mvn/version "0.7.108"}
         com.cognitect/transit-clj {:mvn/version "1.0.329"}
 
+        hiccup/hiccup             {:mvn/version "2.0.0-alpha2"}
+
         ring/ring                 {:mvn/version "1.9.5"}
         ring/ring-defaults        {:mvn/version "0.3.3"}
 

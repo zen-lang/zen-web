@@ -75,6 +75,11 @@
   :config config-binding
   :dir #{:in}}
 
+ test-token
+ {:zen/tags #{zen/op}
+  :zen/desc "use to obtain auth token for tests"
+  :config config-binding}
+
  api
  {:zen/tags #{zen.http/api zen/tag zen.http.oauth/api}
   :engine zen.http/routemap

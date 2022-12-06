@@ -48,6 +48,14 @@
   :require #{:to}
   :keys {:to {:type zen/string}}}
 
+ formats
+ {:zen/tags #{op middleware zen/schema}
+  :type zen/map
+  :require #{:formats}
+  :dir #{:out}
+  :keys {:formats {:type zen/set
+                   :every {:type zen/keyword}}}}
+
  response
  {:zen/tags #{op zen/schema}
   :type zen/map

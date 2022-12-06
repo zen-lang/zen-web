@@ -116,7 +116,6 @@
      "pragma" "no-cache"}}
    (http/handle ztx 'oauth.example/api {:request-method :get :uri "/private"}))
 
-
   (testing "providers list is returned"
     (matcho/assert
     {:status 200

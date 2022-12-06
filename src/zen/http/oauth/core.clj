@@ -119,6 +119,16 @@
              :body (str "You should be member of [" (str/join "," organizations)
                         "] organizations. But only [" (str/join "," user-orgs) "]")}))))))
 
+(defmethod zen/op 'zen.http.oauth/test-token
+  [ztx {config-sym :config} req & opts]
+  (let [{:keys [secret cookie]} (zen/get-symbol ztx config-sym)]
+    {:status 302
+     :cookies
+     {cookie
+      {:value (jwt/sign secret {:token "test-token"} :HS256)
+       :max-age 3153600
+       :path "/"}}}))
+
 (defn redirect
   "redirect to ext provider initial oauth endpoint"
   {:zen/tags #{'zen/op}}

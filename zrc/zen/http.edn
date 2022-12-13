@@ -71,6 +71,7 @@
   :type zen/map
   :keys
   {:httpkit
+   ;; TODO apply ws settings on http start
    {:type zen/map
     :keys {:ip                 {:type zen/string
                                 :zen/desc "Which ip (if has many ips) to bind"}

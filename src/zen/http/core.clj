@@ -146,10 +146,11 @@
 
         ;; apply outbound middlewares
         (mw/reduce-mw (fn [resp* config]
-                        (middleware-out ztx config req resp*))
+                        (middleware-out ztx config req* resp*))
                       resp
-                      (filter #(contains? (:dir %) :out)
-                              all-mws)))
+                      (->> all-mws
+                           (filter #(contains? (:dir %) :out))
+                           reverse)))
 
       {:status 404 :body "route not found"})))
 
@@ -174,7 +175,7 @@
       (dispatch ztx api-symbol parsed-request))))
 
 (defmethod zen/start 'zen.http/httpkit
-  [ztx config]
+  [ztx config & opts]
   (let [web-config
         (merge {:worker-name-prefix "w"
                 :thread 8
@@ -186,7 +187,7 @@
 
 (defmethod zen/stop 'zen.http/httpkit
   [ztx config state]
-  (when-let [srv (:server state)]
+  (let [srv (:server state)]
     (srv)))
 
 (defn merge-unset [acc v]

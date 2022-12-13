@@ -53,16 +53,13 @@
  {:zen/tags #{zen/tag zen/binding}}
 
  index
- {:zen/tags #{zen/op zen.http/op}
-  :config config-binding}
+ {:zen/tags #{zen/op zen.http/op}}
 
  callback
- {:zen/tags #{zen/op zen.http/op}
-  :config config-binding}
+ {:zen/tags #{zen/op zen.http/op}}
 
  redirect
- {:zen/tags #{zen/op zen.http/op}
-  :config config-binding}
+ {:zen/tags #{zen/op zen.http/op}}
 
  verify-jwt
  {:zen/tags #{zen.http/middleware middleware zen/op}

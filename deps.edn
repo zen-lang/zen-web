@@ -1,5 +1,9 @@
 {:paths ["src" "zrc"]
- :deps {http-kit/http-kit         {:mvn/version "2.7.0-alpha1"}
+ :deps {org.clojure/clojure  {:mvn/version "1.11.1"}
+
+        zen-lang/zen {:local/root "libs/zen"}
+
+        http-kit/http-kit         {:mvn/version "2.7.0-alpha1"}
         ;; TODO remove clj-http
         clj-http/clj-http         {:mvn/version "3.12.3"}
 
@@ -10,9 +14,7 @@
         hiccup/hiccup             {:mvn/version "2.0.0-alpha2"}
 
         ring/ring                 {:mvn/version "1.9.5"}
-        ring/ring-defaults        {:mvn/version "0.3.3"}
-
-        zen-lang/zen {:local/root "libs/zen"}}
+        ring/ring-defaults        {:mvn/version "0.3.3"}}
 
  :aliases
  {:nrepl

@@ -1,6 +1,6 @@
-(ns zen.http.oauth.core
+(ns zen-web.oauth.core
   (:require
-   [zen.http.oauth.jwt :as jwt]
+   [zen-web.oauth.jwt :as jwt]
    [clojure.set :as set]
    [zen.core :as zen]
    [ring.util.codec]
@@ -119,16 +119,6 @@
              :body (str "You should be member of [" (str/join "," organizations)
                         "] organizations. But only [" (str/join "," user-orgs) "]")}))))))
 
-(defmethod zen/op 'zen.http.oauth/test-token
-  [ztx {config-sym :config} req & opts]
-  (let [{:keys [secret cookie]} (zen/get-symbol ztx config-sym)]
-    {:status 302
-     :cookies
-     {cookie
-      {:value (jwt/sign secret {:token "test-token"} :HS256)
-       :max-age 3153600
-       :path "/"}}}))
-
 (defn redirect
   "redirect to ext provider initial oauth endpoint"
   {:zen/tags #{'zen/op}}
@@ -175,7 +165,7 @@
     (= fl fr) (match-uri rl rr)))
 
 (defn verify-jwt
-  {:zen/tags #{'zen.http/middleware}}
+  {:zen/tags #{'zen-web/middleware}}
   [ztx {config-sym :config} {:keys [cookies uri] :as req}]
   (let [{:keys [secret cookie public]} (zen/get-symbol ztx config-sym)
         public?
@@ -191,14 +181,14 @@
                    (catch Exception ex
                      {::response {:status 403 :body (ex-message ex)}}))]
           (cond
-            response {:zen.http.core/response response}
+            response {:zen-web.core/response response}
             (and jwt (jwt/verify jwt secret)) {:user (:claims jwt)}
-            :else {:zen.http.core/response (auth-redirect req)}))
-        {:zen.http.core/response (auth-redirect req)}))))
+            :else {:zen-web.core/response (auth-redirect req)}))
+        {:zen-web.core/response (auth-redirect req)}))))
 
 (defn snap-config
   "mount oauth configuration for handler ops"
-  {:zen/tags #{'zen.http/middleware}}
+  {:zen/tags #{'zen-web/middleware}}
   [ztx {config-sym :config} req]
   {:config (update (zen/get-symbol ztx config-sym)
                    :providers

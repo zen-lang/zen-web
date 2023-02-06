@@ -1,5 +1,5 @@
-{:ns zen.http.oauth
- :import #{zen.http zen.http.engines}
+{:ns zen-web.oauth
+ :import #{zen-web zen-web.engines}
 
  middleware {:zen/tags #{zen/tag}}
 
@@ -53,21 +53,21 @@
  {:zen/tags #{zen/tag zen/binding}}
 
  index
- {:zen/tags #{zen/op zen.http/op}}
+ {:zen/tags #{zen/op zen-web/op}}
 
  callback
- {:zen/tags #{zen/op zen.http/op}}
+ {:zen/tags #{zen/op zen-web/op}}
 
  redirect
- {:zen/tags #{zen/op zen.http/op}}
+ {:zen/tags #{zen/op zen-web/op}}
 
  verify-jwt
- {:zen/tags #{zen.http/middleware middleware zen/op}
+ {:zen/tags #{zen-web/middleware middleware zen/op}
   :config config-binding
   :dir #{:in}}
 
  snap-config
- {:zen/tags #{zen.http/middleware middleware zen/op}
+ {:zen/tags #{zen-web/middleware middleware zen/op}
   :zen/desc "resolves provider refs in oauth config for ops"
   :config config-binding
   :dir #{:in}}
@@ -78,8 +78,8 @@
   :config config-binding}
 
  api
- {:zen/tags #{zen.http/api zen/tag zen.http.oauth/api}
-  :engine zen.http/routemap
+ {:zen/tags #{zen-web/api zen/tag zen-web.oauth/api}
+  :engine zen-web/routemap
   :mw [snap-config verify-jwt]
   "auth" {:GET index
           "callback" {[:provider-id] {:GET callback}}

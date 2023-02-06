@@ -1,7 +1,7 @@
-(ns zen.http.oauth.core-test
+(ns zen-web.oauth.core-test
   (:require
    [zen.core :as zen]
-   [zen.http.core :as http]
+   [zen-web.core :as http]
    [matcho.core :as matcho]
    [clojure.test :refer [deftest is testing]]))
 
@@ -13,10 +13,10 @@
 
 (def system-ns
   '{:ns oauth.example
-    :import #{zen.http zen.http.oauth}
+    :import #{zen-web zen-web.oauth}
 
     google
-    {:zen/tags #{zen.http.oauth/provider}
+    {:zen/tags #{zen-web.oauth/provider}
      :id "google"
      :client-id "my-client-id"
      :client-secret "my-client-secret"
@@ -29,7 +29,7 @@
      :system "https://google.com"}
 
     github
-    {:zen/tags #{zen.http.oauth/provider}
+    {:zen/tags #{zen-web.oauth/provider}
      :id "github"
      :client-id "my-client-id-1"
      :client-secret "my-client-secret-1"
@@ -43,8 +43,8 @@
      :user-email-endpoint "https://api.github.com/user/emails"}
 
     oauth-config
-    {:zen/bind zen.http.oauth/config-binding
-     :zen/tags #{zen.http.oauth/config}
+    {:zen/bind zen-web.oauth/config-binding
+     :zen/tags #{zen-web.oauth/config}
      :providers [google github]
      :organizations ["my2ndOrg"]
      :base-uri "http://127.0.0.1.nip.io:8789"
@@ -53,33 +53,33 @@
      :public ["/public"]}
 
     simple-response
-    {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http.engines/response
+    {:zen/tags #{zen/op zen-web/op}
+     :engine zen-web.engines/response
      :response {:status 200}}
 
     basic-auth
-    {:zen/tags #{zen.http/middleware}
-     :engine zen.http.engines/basic-auth
+    {:zen/tags #{zen-web/middleware}
+     :engine zen-web.engines/basic-auth
      :user "john"
      :password "milton"}
 
     api
-    {:zen/tags #{zen.http/api}
-     :engine zen.http/routemap
-     :apis [zen.http.oauth/api]
-     :mw [zen.http/defaults]
+    {:zen/tags #{zen-web/api}
+     :engine zen-web/routemap
+     :apis [zen-web.oauth/api]
+     :mw [zen-web/defaults]
      "public" {:GET simple-response}
      "private" {:GET simple-response}}})
 
-(defmethod zen/op 'zen.http.oauth/index
+(defmethod zen/op 'zen-web.oauth/index
   [ztx cfg {{:keys [providers]} :config} & opts]
   {:status 200
    :body (keys providers)})
 
 (defn prepare! []
   (def ztx (zen/new-context {:zd/paths [pth] :paths [pth]}))
-  (zen/read-ns ztx 'zen.http)
-  (zen/read-ns ztx 'zen.http.oauth)
+  (zen/read-ns ztx 'zen-web)
+  (zen/read-ns ztx 'zen-web.oauth)
   (zen/load-ns ztx system-ns))
 
 (deftest config

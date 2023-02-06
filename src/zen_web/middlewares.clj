@@ -1,6 +1,6 @@
-(ns zen.http.middlewares
+(ns zen-web.middlewares
   (:require
-   [zen.http.utils :as utils]
+   [zen-web.utils :as utils]
    [clojure.string :as str]
    [ring.util.parsing :refer [re-token]]
    [clojure.walk :as walk]
@@ -20,7 +20,7 @@
   (byte-transform #(.decode (Base64/getDecoder) ^bytes %) string))
 
 (defn basic-error [{:keys [request-method]}]
-  {:zen.http.core/response
+  {:zen-web.core/response
    (cond-> {:status 401
             :headers {"Content-Type" "text/plain"
                       "WWW-Authenticate" "Basic realm=restricted area"}}
@@ -108,7 +108,7 @@
         :else (str ";" attr-name "=" value)))))
 
 (defn set-cookies
-  {:zen/tags #{'zen.http/middleware}}
+  {:zen/tags #{'zen-web/middleware}}
   [ztx cfg req resp]
   (when-let [cookies (:cookies resp)]
     (let [http-cookies
@@ -127,7 +127,7 @@
     (if (empty? mws)
       acc
       (let [patch (apply-fn acc (first mws))]
-        (if-let [resp (:zen.http.core/response patch)]
+        (if-let [resp (:zen-web.core/response patch)]
           resp
           (recur (rest mws)
                  (if (map? patch)
@@ -135,31 +135,31 @@
                    acc)))))))
 
 (defn all-of-in
-  {:zen/tags #{'zen.http/middleware}}
+  {:zen/tags #{'zen-web/middleware}}
   [ztx {:keys [mws]} req]
   (let [mws-in (->> mws
                     (map #(utils/resolve-mw ztx %))
                     (filter #(contains? (:dir %) :in)))
         apply-fn
         (fn [req* config]
-          ((ns-resolve (find-ns 'zen.http.core) 'middleware-in) ztx config req*))]
+          ((ns-resolve (find-ns 'zen-web.core) 'middleware-in) ztx config req*))]
 
     (reduce-mw apply-fn req mws-in)))
 
 (defn all-of-out
-  {:zen/tags #{'zen.http/middleware}}
+  {:zen/tags #{'zen-web/middleware}}
   [ztx {:keys [mws]} req resp]
   (let [mws-out (->> mws
                      (map #(utils/resolve-mw ztx %))
                      (filter #(contains? (:dir %) :out)))
         apply-fn
         (fn [resp* config]
-          ((ns-resolve (find-ns 'zen.http.core) 'middleware-out) ztx config req resp*))]
+          ((ns-resolve (find-ns 'zen-web.core) 'middleware-out) ztx config req resp*))]
 
     (reduce-mw apply-fn resp mws-out)))
 
 (defn one-of
-  {:zen/tags #{'zen.http/middleware}}
+  {:zen/tags #{'zen-web/middleware}}
   [ztx {:keys [mws]} req]
   (loop [mws (->> mws
                   (map #(utils/resolve-mw ztx %))
@@ -170,16 +170,16 @@
       (if (nil? resp)
         {:status 403 :body {:message (str "one of mws " mws " must pass")}}
         resp)
-      (let [patch ((ns-resolve (find-ns 'zen.http.core) 'middleware-in) ztx (first mws) req)]
-        (if-let [resp (:zen.http.core/response patch)]
+      (let [patch ((ns-resolve (find-ns 'zen-web.core) 'middleware-in) ztx (first mws) req)]
+        (if-let [resp (:zen-web.core/response patch)]
           (recur (rest mws)
                  resp
-                 (utils/deep-merge req (dissoc patch :zen.http.core/response)))
+                 (utils/deep-merge req (dissoc patch :zen-web.core/response)))
           (if (map? patch)
             (utils/deep-merge req patch)))))))
 
 (defn formats
-  {:zen/tags #{'zen.http/middleware}}
+  {:zen/tags #{'zen-web/middleware}}
   [ztx {:keys [formats]} req resp]
   (let [ct (get-in resp [:headers "Content-Type"])]
     (cond

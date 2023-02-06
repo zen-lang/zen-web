@@ -1,4 +1,4 @@
-(ns zen.http.core
+(ns zen-web.core
   (:require
    [ring.util.response :as mw-util]
    [clojure.java.io :as io]
@@ -6,11 +6,12 @@
    [ring.util.codec :as codec]
    [org.httpkit.server :as http-kit]
    [clojure.string :as str]
-   [zen.http.oauth.core :as oauth]
-   [zen.http.utils :as utils]
-   [zen.http.httpkit]
-   [zen.http.routemap :as rm]
-   [zen.http.middlewares :as mw]))
+   [zen-web.oauth.core :as oauth]
+   [zen-web.oauth.jwt :as jwt]
+   [zen-web.utils :as utils]
+   [zen-web.httpkit]
+   [zen-web.routemap :as rm]
+   [zen-web.middlewares :as mw]))
 
 (defmulti middleware-in
   (fn [ztx cfg request]
@@ -20,55 +21,65 @@
   (fn [ztx cfg request response]
     (zen/engine-or-name cfg)))
 
-(defmethod middleware-in 'zen.http.oauth/verify-jwt
+(defmethod middleware-in 'zen-web.oauth/verify-jwt
   [ztx cfg req & args]
   (oauth/verify-jwt ztx cfg req))
 
-(defmethod middleware-in 'zen.http.oauth/snap-config
+(defmethod middleware-in 'zen-web.oauth/snap-config
   [ztx cfg req & args]
   (oauth/snap-config ztx cfg req))
 
-(defmethod zen/op 'zen.http.oauth/redirect
+(defmethod zen/op 'zen-web.oauth/test-token
+  [ztx {config-sym :config} req & opts]
+  (let [{:keys [secret cookie]} (zen/get-symbol ztx config-sym)]
+    {:status 302
+     :cookies
+     {cookie
+      {:value (jwt/sign secret {:token "test-token"} :HS256)
+       :max-age 3153600
+       :path "/"}}}))
+
+(defmethod zen/op 'zen-web.oauth/redirect
   [ztx cfg req & opts]
   (oauth/redirect ztx cfg req))
 
-(defmethod zen/op 'zen.http.oauth/callback
+(defmethod zen/op 'zen-web.oauth/callback
   [ztx cfg req & opts]
   (oauth/callback ztx cfg req))
 
-(defmethod middleware-in 'zen.http.engines/basic-auth
+(defmethod middleware-in 'zen-web.engines/basic-auth
   [ztx cfg req & args]
   (mw/verify-basic-auth ztx cfg req))
 
-(defmethod middleware-out 'zen.http/cors
+(defmethod middleware-out 'zen-web/cors
   [ztx cfg req resp & args]
   (mw/set-cors-headers ztx cfg req resp))
 
-(defmethod middleware-in 'zen.http/parse-params
+(defmethod middleware-in 'zen-web/parse-params
   [ztx cfg req & args]
   (mw/parse-params ztx cfg req))
 
-(defmethod middleware-in 'zen.http/cookies
+(defmethod middleware-in 'zen-web/cookies
   [ztx cfg req & args]
   (mw/parse-cookies ztx cfg req))
 
-(defmethod middleware-out 'zen.http/cookies
+(defmethod middleware-out 'zen-web/cookies
   [ztx cfg req resp & args]
   (mw/set-cookies ztx cfg req resp))
 
-(defmethod middleware-out 'zen.http.engines/formats
+(defmethod middleware-out 'zen-web.engines/formats
   [ztx cfg req resp & args]
   (mw/formats ztx cfg req resp))
 
-(defmethod middleware-in 'zen.http.engines/all-of
+(defmethod middleware-in 'zen-web.engines/all-of
   [ztx cfg req & args]
   (mw/all-of-in ztx cfg req))
 
-(defmethod middleware-out 'zen.http.engines/all-of
+(defmethod middleware-out 'zen-web.engines/all-of
   [ztx cfg req resp & args]
   (mw/all-of-out ztx cfg req resp))
 
-(defmethod middleware-in 'zen.http.engines/one-of
+(defmethod middleware-in 'zen-web.engines/one-of
   [ztx cfg req & args]
   (mw/one-of ztx cfg req))
 
@@ -77,14 +88,14 @@
     (zen/engine-or-name cfg)))
 
 ;; TODO wrap in zen/op
-(defmethod resolve-route 'zen.http/routemap
+(defmethod resolve-route 'zen-web/routemap
   [ztx cfg path ctx]
   (rm/resolve-route ztx cfg path ctx))
 
 (defmethod resolve-route
   :default
   [ztx cfg _path ctx]
-  (zen/error ztx 'zen.http/no-resolve-route-method {:method (zen/engine-or-name cfg) :path (:path ctx)})
+  (zen/error ztx 'zen-web/no-resolve-route-method {:method (zen/engine-or-name cfg) :path (:path ctx)})
   nil)
 
 (def initial-ctx {:path [] :params {} :middlewares []})
@@ -103,10 +114,10 @@
 (defmethod routes
   :default
   [ztx cfg ctx]
-  [(-> (assoc ctx :op 'unknown :error (str "method zen.http.methods/routes is not implemented for " (:zen/name cfg)))
+  [(-> (assoc ctx :op 'unknown :error (str "method zen-web.methods/routes is not implemented for " (:zen/name cfg)))
        (update :path conj :?))])
 
-(defmethod routes 'zen.http/routemap
+(defmethod routes 'zen-web/routemap
   [ztx cfg ctx]
   (rm/*routes ztx cfg ctx))
 
@@ -174,7 +185,7 @@
         "Location, Transaction-Meta, Content-Location, Category, Content-Type, X-total-count"}}
       (dispatch ztx api-symbol parsed-request))))
 
-(defmethod zen/start 'zen.http/httpkit
+(defmethod zen/start 'zen-web/httpkit
   [ztx config & opts]
   (let [web-config
         (merge {:worker-name-prefix "w"
@@ -185,7 +196,7 @@
         (fn [request] (handle ztx (:api config) request))]
     {:server (http-kit/run-server req-fn web-config)}))
 
-(defmethod zen/stop 'zen.http/httpkit
+(defmethod zen/stop 'zen-web/httpkit
   [ztx config state]
   (let [srv (:server state)]
     (srv)))
@@ -195,7 +206,7 @@
     (utils/deep-merge acc v)
     v))
 
-(defmethod zen/op 'zen.http.engines/response
+(defmethod zen/op 'zen-web.engines/response
   [ztx {:keys [select response] :as cfg} req & args]
   (cond-> response
     (vector? select)
@@ -204,12 +215,12 @@
     (keyword? select)
     (update :body merge-unset (get req select))))
 
-(defmethod zen/op 'zen.http.engines/redirect
+(defmethod zen/op 'zen-web.engines/redirect
   [ztx {:keys [to]} req & args]
   {:status 301
    :headers {"Location" to}})
 
-(defmethod zen/op 'zen.http.engines/serve-static
+(defmethod zen/op 'zen-web.engines/serve-static
   [ztx {:keys [serve]} {uri :uri rp :route-params :as req} & args]
   (let [file-path (str/join "/" (:* rp))]
     (if-let [f (or (io/resource file-path)

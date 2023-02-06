@@ -1,4 +1,4 @@
-(ns zen.http.utils
+(ns zen-web.utils
   (:require
    [clojure.string :as str]
    [zen.core :as zen]))

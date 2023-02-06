@@ -1,94 +1,94 @@
-(ns zen.http.middlewares-test
+(ns zen-web.middlewares-test
   (:require
    [ring.util.codec :as codec :refer [form-encode]]
    [clojure.java.io :as io]
    [zen.core :as zen]
-   [zen.http.core :as web]
+   [zen-web.core :as web]
    [matcho.core :as matcho]
    [clojure.test :refer [is deftest testing]]))
 
 (def config
   '{:ns myweb
-    :import #{zen.http}
+    :import #{zen-web}
 
     index-op
-    {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http.engines/response
+    {:zen/tags #{zen/op zen-web/op}
+     :engine zen-web.engines/response
      :response {:status 200
                 :body "Hello"}}
 
     admin-index-op
-    {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http.engines/response
+    {:zen/tags #{zen/op zen-web/op}
+     :engine zen-web.engines/response
      :response {:status 200
                 :body "Hello, admin"}}
 
     form-params
-    {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http.engines/response
+    {:zen/tags #{zen/op zen-web/op}
+     :engine zen-web.engines/response
      :select :form-params
      :response {:status 200}}
 
     query-params
-    {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http.engines/response
+    {:zen/tags #{zen/op zen-web/op}
+     :engine zen-web.engines/response
      :select :params
      :response {:status 200}}
 
     basic-auth
-    {:zen/tags #{zen.http/middleware}
-     :engine zen.http.engines/basic-auth
+    {:zen/tags #{zen-web/middleware}
+     :engine zen-web.engines/basic-auth
      :user "john"
      :password "123"}
 
     admin-api
-    {:zen/tags #{zen.http/api}
-     :engine zen.http/routemap
+    {:zen/tags #{zen-web/api}
+     :engine zen-web/routemap
      :mw [basic-auth]
      :GET admin-index-op}
 
     cookies-op
-    {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http.engines/response
+    {:zen/tags #{zen/op zen-web/op}
+     :engine zen-web.engines/response
      :select :cookies
      :response {:status 200}}
 
     *cookie-set
-    {:zen/tags #{zen.http.engines/op zen/schema}
+    {:zen/tags #{zen-web.engines/op zen/schema}
      :type zen/map
      :keys {:max-age {:type zen/integer}}}
 
     cookie-set
-    {:zen/tags #{zen/op zen.http/op}
+    {:zen/tags #{zen/op zen-web/op}
      :engine *cookie-set
      :max-age 1000}
 
     override-op
-    {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http.engines/response
+    {:zen/tags #{zen/op zen-web/op}
+     :engine zen-web.engines/response
      :response {:status 200}}
 
     api
-    {:zen/tags #{zen.http/api}
-     :engine zen.http/routemap
-     :mw [zen.http/cors]
+    {:zen/tags #{zen-web/api}
+     :engine zen-web/routemap
+     :mw [zen-web/cors]
      :GET index-op
-     :POST zen.http/rpc
-     "params-mw" {:mw [zen.http/parse-params]
+     :POST zen-web/rpc
+     "params-mw" {:mw [zen-web/parse-params]
                   :POST form-params
                   :GET query-params}
-     "cookies-mw" {:mw [zen.http/cookies]
+     "cookies-mw" {:mw [zen-web/cookies]
                    :GET cookies-op
                    "get-cookies" {:GET cookie-set}}
      "method-override" {:PUT override-op}
      "admin" {:apis [admin-api]}}
 
     http
-    {:zen/tags #{zen/start zen.http/http}
-     :engine zen.http/httpkit
+    {:zen/tags #{zen/start zen-web/http}
+     :engine zen-web/httpkit
      :port 8080
      :api api
-     #_:formats #_#{zen.http/json zen.http/yaml zen.http/html}}
+     #_:formats #_#{zen-web/json zen-web/yaml zen-web/html}}
 
     system
     {:zen/tags #{zen/system}
@@ -201,11 +201,11 @@
 
   (def myconfig
     '{:ns mytest
-      :import #{zen.http}
+      :import #{zen-web}
 
       index
-      {:zen/tags #{zen/op zen.http/op}
-       :engine zen.http.engines/response
+      {:zen/tags #{zen/op zen-web/op}
+       :engine zen-web.engines/response
        :select [:query-params :cookies]
        :response {:status 200
                   :cookies
@@ -214,14 +214,14 @@
                             :path "/"}}}}
 
       api
-      {:zen/tags #{zen.http/api}
-       :engine zen.http/routemap
-       :mw [zen.http/defaults]
+      {:zen/tags #{zen-web/api}
+       :engine zen-web/routemap
+       :mw [zen-web/defaults]
        "index" {:GET index}}
 
       http
-      {:zen/tags #{zen/start zen.http/http}
-       :engine zen.http/httpkit
+      {:zen/tags #{zen/start zen-web/http}
+       :engine zen-web/httpkit
        :port 8080
        :api api}
 

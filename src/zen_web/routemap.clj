@@ -1,6 +1,7 @@
-(ns zen.http.routemap
-  (:require [clojure.string :as str]
-            [zen.core :as zen]))
+(ns zen-web.routemap
+  (:require
+   [clojure.string :as str]
+   [zen.core :as zen]))
 
 (defn pathify [path]
   (filterv #(not (str/blank? %)) (str/split path #"/")))
@@ -76,9 +77,9 @@
                        (map (fn [api-name]
                               (if-let [api (zen/get-symbol ztx api-name)]
                                 ;; a bit of black magic to avoid transitive dep
-                                ((ns-resolve (find-ns 'zen.http.core) 'resolve-route) ztx api path ctx)
+                                ((ns-resolve (find-ns 'zen-web.core) 'resolve-route) ztx api path ctx)
                                 (do
-                                  (zen/error ztx 'zen.http/api-not-found {:api api-name})
+                                  (zen/error ztx 'zen-web/api-not-found {:api api-name})
                                   nil))))
                        (filter identity)
                        (first)))
@@ -130,7 +131,7 @@
                           (reduce (fn [acc api-name]
                                     (if-let [api (zen/get-symbol ztx api-name)]
                                       ;; a bit of black magic to avoid transitive dep
-                                      (into acc ((ns-resolve (find-ns 'zen.http.core) 'routes) ztx api ctx))
+                                      (into acc ((ns-resolve (find-ns 'zen-web.core) 'routes) ztx api ctx))
                                       acc))
                                   acc))
                      :else acc))

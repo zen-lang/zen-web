@@ -1,4 +1,4 @@
-(ns zen.http.oauth.jwt
+(ns zen-web.oauth.jwt
   (:require
    [cheshire.core :as json]
    [clojure.string :as str])

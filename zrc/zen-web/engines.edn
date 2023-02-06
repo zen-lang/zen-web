@@ -1,4 +1,4 @@
-{:ns zen.http.engines
+{:ns zen-web.engines
 
  middleware
  {:zen/tags #{zen/tag zen/schema}
@@ -19,7 +19,7 @@
   :dir #{:in}
   :keys {:mws {:type zen/vector
                :every {:type zen/symbol
-                       :tags #{zen.http/middleware}}}}}
+                       :tags #{zen-web/middleware}}}}}
 
  all-of
  {:zen/tags #{middleware zen/schema}
@@ -28,7 +28,7 @@
   :dir #{:in :out}
   :keys {:mws {:type zen/vector
                :every {:type zen/symbol
-                       :tags #{zen.http/middleware}}}}}
+                       :tags #{zen-web/middleware}}}}}
 
  basic-auth
  {:zen/tags #{middleware zen/schema}

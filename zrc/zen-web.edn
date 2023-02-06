@@ -1,18 +1,18 @@
-{:ns zen.http
- :import #{zen.http.engines}
+{:ns zen-web
+ :import #{zen-web.engines}
 
  middleware
  {:zen/tags #{zen/tag zen/schema zen/op}
   :type zen/map
   :schema-key {:key :engine}
-  :keys {:engine {:type zen/symbol :tags #{zen.http.engines/middleware}}
+  :keys {:engine {:type zen/symbol :tags #{zen-web.engines/middleware}}
          :dir {:type zen/set :every {:type zen/keyword}}}}
 
  op
  {:zen/tags #{zen/tag zen/schema}
   :type zen/map
   :schema-key {:key :engine}
-  :keys {:engine {:type zen/symbol :tags #{zen.http.engines/op}}}}
+  :keys {:engine {:type zen/symbol :tags #{zen-web.engines/op}}}}
 
  api-engine
  {:zen/tags #{zen/tag}
@@ -29,14 +29,14 @@
                {:when {:type zen/string}}]}
   :keys {:apis {:type zen/vector
                 :every {:type zen/symbol
-                        :tags #{zen.http/api}}}
+                        :tags #{zen-web/api}}}
          ;; TODO implement in engine
          :middlewares {:type zen/vector
                        :every {:type zen/symbol
-                               :tags #{zen.http/middleware}}}
+                               :tags #{zen-web/middleware}}}
          :mw {:type zen/vector
               :every {:type zen/symbol
-                      :tags #{zen.http/middleware}}}}}
+                      :tags #{zen-web/middleware}}}}}
 
  api
  {:zen/tags #{zen/tag zen/schema}
@@ -144,10 +144,10 @@
 
  formats
  {:zen/tags #{zen/op middleware zen/schema}
-  :engine zen.http.engines/formats
+  :engine zen-web.engines/formats
   :formats #{:html}}
 
  defaults
  {:zen/tags #{zen/op middleware zen/schema}
-  :engine zen.http.engines/all-of
+  :engine zen-web.engines/all-of
   :mws [cors parse-params cookies formats]}}

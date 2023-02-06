@@ -1,39 +1,39 @@
-(ns zen.http.core-test
+(ns zen-web.core-test
   (:require
    [zen.core :as zen]
-   [zen.http.core :as web]
+   [zen-web.core :as web]
    [matcho.core :as matcho]
    [clojure.test :refer [deftest is testing]]))
 
 (def config
   '{:ns myweb
-    :import #{zen.http}
+    :import #{zen-web}
 
     index
-    {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http.engines/response
+    {:zen/tags #{zen/op zen-web/op}
+     :engine zen-web.engines/response
      :response {:status 200
                 :body "Hello"}}
 
     override
-    {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http.engines/response
+    {:zen/tags #{zen/op zen-web/op}
+     :engine zen-web.engines/response
      :response {:status 200}}
 
     basic-auth
-    {:zen/tags #{zen.http/middleware}
-     :engine zen.http.engines/basic-auth
+    {:zen/tags #{zen-web/middleware}
+     :engine zen-web.engines/basic-auth
      :user "john"
      :password "123"}
 
     serve-static
-    {:zen/tags #{zen/op zen.http/op}
-     :engine zen.http.engines/serve-static
-     :serve ["/test/zen/http/static"]}
+    {:zen/tags #{zen/op zen-web/op}
+     :engine zen-web.engines/serve-static
+     :serve ["/test/zen_web/static"]}
 
     api
-    {:zen/tags #{zen.http/api}
-     :engine zen.http/routemap
+    {:zen/tags #{zen-web/api}
+     :engine zen-web/routemap
      "files" {:* {:GET serve-static}}
      :GET index
      "test-mw" {:mw [basic-auth]
@@ -41,11 +41,11 @@
      "method-override" {:PUT override}}
 
     http
-    {:zen/tags #{zen/start zen.http/http}
-     :engine zen.http/httpkit
+    {:zen/tags #{zen/start zen-web/http}
+     :engine zen-web/httpkit
      :port 8080
      :api api
-     #_:formats #_#{zen.http/json zen.http/yaml zen.http/html}}
+     #_:formats #_#{zen-web/json zen-web/yaml zen-web/html}}
 
     system
     {:zen/tags #{zen/system}
@@ -106,7 +106,7 @@
     (matcho/assert
      {:status 200
       :body #(instance? java.io.File %)}
-     (web/handle ztx 'myweb/api {:uri "/files/zen/http/static/content.txt" :request-method :get})))
+     (web/handle ztx 'myweb/api {:uri "/files/zen_web/static/content.txt" :request-method :get})))
 
   (matcho/assert
    {:status 404
@@ -119,27 +119,27 @@
 
   (def myapp-config
     '{:ns myapp
-      :import #{zen.http}
+      :import #{zen-web}
 
       ->index
-      {:zen/tags #{zen/op zen.http/op}
-       :engine zen.http.engines/redirect
+      {:zen/tags #{zen/op zen-web/op}
+       :engine zen-web.engines/redirect
        :to "/index"}
 
       index
-      {:zen/tags #{zen/op zen.http/op}
-       :engine zen.http.engines/response
+      {:zen/tags #{zen/op zen-web/op}
+       :engine zen-web.engines/response
        :response {:status 200 :body "hello"}}
 
       api
-      {:zen/tags #{zen.http/api}
-       :engine zen.http/routemap
+      {:zen/tags #{zen-web/api}
+       :engine zen-web/routemap
        :GET ->index
        "index" {:GET index}}
 
       http
-      {:zen/tags #{zen/start zen.http/http}
-       :engine zen.http/httpkit
+      {:zen/tags #{zen/start zen-web/http}
+       :engine zen-web/httpkit
        :port 5678
        :api api}
 

@@ -11,7 +11,11 @@
    [zen-web.utils :as utils]
    [zen-web.httpkit]
    [zen-web.routemap :as rm]
+   [clojure.walk]
    [zen-web.middlewares :as mw]))
+
+
+(defn form-decode [s] (clojure.walk/keywordize-keys (ring.util.codec/form-decode s)))
 
 (defmulti middleware-in
   (fn [ztx cfg request]
@@ -133,10 +137,13 @@
      (sort-by (fn [x] (str/join "/" (:path x)))))))
 
 ;; TODO wrap in zen/op
-(defn dispatch [ztx comp-symbol {uri :uri meth :request-method :as req}]
+(defn dispatch [ztx comp-symbol {uri :uri qs :query-string meth :request-method :as req}]
+  ;; TODO we need zen/log or zen/event
+  ;; (println meth uri (:query-string req))
   (let [api-config (zen/get-symbol ztx comp-symbol)
         path (conj (rm/pathify uri) (-> (or meth :get) name str/upper-case keyword))
         ;; TODO we need session param for zen/op?
+        query-params (when qs (form-decode qs))
         session {}]
     (if-let [{op :op  params :params mw :middlewares}
              (resolve-route ztx api-config path initial-ctx)]
@@ -145,7 +152,7 @@
             req*
             (mw/reduce-mw (fn [req* config]
                             (middleware-in ztx config req*))
-                          (assoc req :route-params params)
+                          (assoc req :route-params params :params query-params)
                           (filter #(contains? (:dir %) :in)
                                   all-mws))
 

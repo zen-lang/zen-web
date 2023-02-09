@@ -240,7 +240,7 @@
                                  (when (.exists f) f))))
                         (filter identity)
                         (first)))]
-    ;; TODO get rid of mw util dep
+      ;; TODO get rid of mw util dep
       (mw-util/file-response (.getPath f))
       {:status 404
        :body "file not found"})))

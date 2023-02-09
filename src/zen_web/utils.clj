@@ -9,7 +9,8 @@
   ([a b & more]
    (apply deep-merge (deep-merge a b) more))
   ([a b]
-   (if (and (map? a) (map? b))
+   (cond
+     (and (map? a) (map? b))
      (loop [[[k v :as i] & ks] b, acc a]
        (if (nil? i)
          acc
@@ -21,9 +22,10 @@
                       (and (map? v) (map? av)) (assoc acc k (deep-merge av v))
                       (and (nil? v) (map? av)) (assoc acc k av)
                       :else (assoc acc k v)))))))
-     (do
-       (println :error "deep-merge type missmatch: " a b)
-       b))))
+     (and (nil? a) (map? b)) b
+     (and (nil? b) (map? a)) b
+     :else
+     (do (println :error "deep-merge type missmatch: " a b) b))))
 
 (defn content-type [hs]
   (when-let [ct (get hs "content-type")]

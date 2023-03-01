@@ -25,6 +25,7 @@
      (and (nil? a) (map? b)) b
      (and (nil? b) (map? a)) b
      :else
+     ;; TODO pub zen event
      (do (println :error "deep-merge type missmatch: " a b) b))))
 
 (defn content-type [hs]

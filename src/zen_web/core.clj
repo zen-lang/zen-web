@@ -201,7 +201,8 @@
                config)
         req-fn
         (fn [request] (handle ztx (:api config) request))]
-    {:server (http-kit/run-server req-fn web-config)}))
+    {:server (http-kit/run-server req-fn web-config)
+     :config config}))
 
 (defmethod zen/stop 'zen-web/httpkit
   [ztx config state]
